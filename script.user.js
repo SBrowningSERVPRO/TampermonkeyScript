@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.2
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office
 // @author       You
 // @match        https://servpro.ngsapps.net/Enterprise/Module/Job/CreateJob.aspx
-// @updateURL    https://github.com/SBrowningSERVPRO/TampermonkeyScript/blob/main/script.user.js
-// @downloadURL  https://github.com/SBrowningSERVPRO/TampermonkeyScript/blob/main/script.user.js
+// @updateURL    https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/main/script.user.js
+// @downloadURL  https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/main/script.user.js
 // @supportURL   https://github.com/SBrowningSERVPRO/TampermonkeyScript
 // @grant        none
 // ==/UserScript==
