@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      1.2
+// @version      1.3
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office
 // @author       You
 // @match        https://servpro.ngsapps.net/Enterprise/Module/Job/CreateJob.aspx
