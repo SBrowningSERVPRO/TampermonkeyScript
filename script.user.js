@@ -3,7 +3,7 @@
 // @namespace    http://tampermonkey.net/
 // @version      1.4
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office
-// @author       You
+// @author       Samuel Browning
 // @match        https://servpro.ngsapps.net/Enterprise/Module/Job/CreateJob.aspx
 // @updateURL    https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/main/script.user.js
 // @downloadURL  https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/main/script.user.js
