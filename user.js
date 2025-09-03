@@ -5,6 +5,9 @@
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office
 // @author       You
 // @match        https://servpro.ngsapps.net/Enterprise/Module/Job/CreateJob.aspx
+// @updateURL    https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/refs/heads/main/user.js
+// @downloadURL  https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/refs/heads/main/user.js
+// @supportURL   https://github.com/SBrowningSERVPRO/TampermonkeyScript
 // @grant        none
 // ==/UserScript==
 
@@ -95,7 +98,7 @@
     function getParticipantLabel(comboBoxElement) {
         const parentTable = comboBoxElement.closest('table[style="width: 100%;"]');
         if (!parentTable) return null;
-
+        
         const labelSpan = parentTable.querySelector('.DashLabelFontStyle');
         return labelSpan ? labelSpan.textContent.trim() : null;
     }
@@ -104,12 +107,12 @@
     function setDropdownValue(comboBoxElement, value, text, forceUpdate = false) {
         const input = comboBoxElement.querySelector('input.rcbInput');
         const hiddenField = comboBoxElement.querySelector('input[type="hidden"][name*="_ClientState"]');
-
+        
         if (!input || !hiddenField) return false;
 
         // Get a unique identifier for this field
         const fieldId = input.id || input.name;
-
+        
         // Don't override user changes unless forced
         if (!forceUpdate && userModifiedFields.has(fieldId)) {
             console.log(`Skipping ${fieldId} - user has modified this field`);
@@ -118,7 +121,7 @@
 
         // Update the visible input
         input.value = text;
-
+        
         // Handle empty/Select values
         if (value === '' || text === 'Select') {
             // For empty values, set proper empty state
@@ -131,7 +134,7 @@
                 checkedItemsTextOverflows: false
             };
             hiddenField.value = JSON.stringify(emptyClientState);
-
+            
             // Add the empty message class if needed
             if (!input.classList.contains('rcbEmptyMessage')) {
                 input.classList.add('rcbEmptyMessage');
@@ -146,23 +149,23 @@
                 checkedIndices: [],
                 checkedItemsTextOverflows: false
             };
-
+            
             hiddenField.value = JSON.stringify(clientState);
             // Remove the empty message class
             input.classList.remove('rcbEmptyMessage');
         }
-
+        
         // Trigger change events
         input.dispatchEvent(new Event('change', { bubbles: true }));
         hiddenField.dispatchEvent(new Event('change', { bubbles: true }));
-
+        
         return true;
     }
 
     // Function to set external participant defaults
     function setExternalParticipantDefaults() {
         console.log('Setting external participant defaults...');
-
+        
         Object.keys(defaultExternalParticipants).forEach(elementId => {
             const element = document.getElementById(elementId);
             if (element) {
@@ -170,7 +173,7 @@
                 if (dropdown) {
                     const setting = defaultExternalParticipants[elementId];
                     const success = setDropdownValue(dropdown, setting.value, setting.text);
-
+                    
                     if (success) {
                         console.log(`Set external participant ${elementId} to: ${setting.text}`);
                     } else {
@@ -188,7 +191,7 @@
     // Function to setup user change tracking
     function setupUserChangeTracking() {
         console.log('Setting up user change tracking...');
-
+        
         // Track changes to internal participant dropdowns
         const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox input.rcbInput');
         participantDropdowns.forEach(input => {
@@ -221,18 +224,18 @@
         }
 
         console.log('Applying configuration for:', officeName);
-
+        
         // Find all participant dropdown elements
         const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
-
+        
         participantDropdowns.forEach(dropdown => {
             const participantLabel = getParticipantLabel(dropdown);
-
+            
             if (participantLabel && config[participantLabel]) {
                 const setting = config[participantLabel];
                 // Force update for office changes
                 const success = setDropdownValue(dropdown, setting.value, setting.text, true);
-
+                
                 if (success) {
                     console.log(`Set ${participantLabel} to: ${setting.text}`);
                 } else {
@@ -252,7 +255,7 @@
     function setupOfficeMonitor() {
         const officeDropdown = document.querySelector('#ctl00_ContentPlaceHolder1_JobParentInformation_GenaralInfo_comboBoxOffice_Input');
         const officeHiddenField = document.querySelector('#ctl00_ContentPlaceHolder1_JobParentInformation_GenaralInfo_comboBoxOffice_ClientState');
-
+        
         if (!officeDropdown || !officeHiddenField) {
             console.error('Office dropdown elements not found');
             return;
@@ -290,16 +293,16 @@
     // Initialize when page is ready
     function initialize() {
         console.log('SERVPRO Auto-Fill script initialized');
-
+        
         // Set up monitoring for office changes
         setupOfficeMonitor();
-
+        
         // Set up user change tracking
         setTimeout(() => setupUserChangeTracking(), 1000);
-
+        
         // Always set external participant defaults first
         setTimeout(() => setExternalParticipantDefaults(), 500);
-
+        
         // Check if there's already a default office selected and apply its config
         const currentOffice = document.querySelector('#ctl00_ContentPlaceHolder1_JobParentInformation_GenaralInfo_comboBoxOffice_Input');
         if (currentOffice && currentOffice.value && officeConfigs[currentOffice.value]) {
