@@ -5,8 +5,8 @@
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office
 // @author       You
 // @match        https://servpro.ngsapps.net/Enterprise/Module/Job/CreateJob.aspx
-// @updateURL    https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/refs/heads/main/user.js
-// @downloadURL  https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/refs/heads/main/user.js
+// @updateURL    https://github.com/SBrowningSERVPRO/TampermonkeyScript/blob/main/script.user.js
+// @downloadURL  https://github.com/SBrowningSERVPRO/TampermonkeyScript/blob/main/script.user.js
 // @supportURL   https://github.com/SBrowningSERVPRO/TampermonkeyScript
 // @grant        none
 // ==/UserScript==
