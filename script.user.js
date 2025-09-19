@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      1.5
+// @version      1.6
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office
 // @author       Samuel Browning
 // @match        https://servpro.ngsapps.net/Enterprise/Module/Job/CreateJob.aspx
@@ -46,7 +46,7 @@
             'Accounting': { value: '140311', text: 'Shippee, Kathryn' },
             'Marketing': { value: '3347', text: 'Not, Applicable' },
             'Recon PM': { value: '3347', text: 'Not, Applicable' },
-            'Accounts Receivable': { value: '140311', text: 'Shippee, Kathryn' },
+            'Accounts Receivable': { value: '213540', text: 'Ballinger, Walt' },
             'Back Office Team': { value: '3347', text: 'Not, Applicable' },
             'Recon Follow Up': { value: '172368', text: 'Sherman, Crystal' },
             'ASM': { value: '169925', text: 'Campos, Jill' },
@@ -67,7 +67,7 @@
             'Accounting': { value: '177881', text: 'Matta, Sreelakshmi' },
             'Marketing': { value: '3347', text: 'Not, Applicable' },
             'Recon PM': { value: '3347', text: 'Not, Applicable' },
-            'Accounts Receivable': { value: '177881', text: 'Matta, Sreelakshmi' },
+            'Accounts Receivable': { value: '213542', text: 'Harrison, Lamiyah' },
             'Back Office Team': { value: '179363', text: 'Team, Water' },
             'Recon Follow Up': { value: '193188', text: 'Ange, Diane' },
             'ASM': { value: '169925', text: 'Campos, Jill' },
