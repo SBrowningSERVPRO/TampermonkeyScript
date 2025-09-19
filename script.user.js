@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      1.6
+// @version      2.0
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office
 // @author       Samuel Browning
 // @match        https://servpro.ngsapps.net/Enterprise/Module/Job/CreateJob.aspx
@@ -94,25 +94,115 @@
         'ctl00_ContentPlaceHolder1_JobParentInformation_ExternalParticipants_SystemIndividualParticipantCombobox_33': { value: '3450405', text: 'Applicable, Not' }
     };
 
+    // Special coordinators that require Cristine Burgess as Mit JFC TL
+    const specialCoordinators = {
+        '154121': 'Ashlee Luce',
+        '173722': 'Courtney Jackson',
+        '173730': 'Tracy Moore',
+        '143694': 'Monica Mason',
+        '192734': 'Valerie Carden',
+        '211953': 'Madelyn Harrell',
+        '213890': 'Bree Kozlowski'
+    };
+
     // Function to get participant label from the DOM element
     function getParticipantLabel(comboBoxElement) {
         const parentTable = comboBoxElement.closest('table[style="width: 100%;"]');
         if (!parentTable) return null;
-        
         const labelSpan = parentTable.querySelector('.DashLabelFontStyle');
         return labelSpan ? labelSpan.textContent.trim() : null;
+    }
+
+    // Function to check and update Mit JFC TL based on coordinator
+    function checkAndUpdateMitJfcTl(coordinatorValue) {
+        console.log('Checking coordinator value:', coordinatorValue);
+        // Find the Mit JFC TL dropdown
+        const mitJfcTlDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
+        let mitJfcTlDropdown = null;
+        mitJfcTlDropdowns.forEach(dropdown => {
+            const label = getParticipantLabel(dropdown);
+            if (label === 'Mit JFC TL') {
+                mitJfcTlDropdown = dropdown;
+            }
+        });
+        if (!mitJfcTlDropdown) {
+            console.log('Mit JFC TL dropdown not found');
+            return;
+        }
+        // Check if coordinator is in special list
+        if (specialCoordinators[coordinatorValue]) {
+            // Set to Cristine Burgess
+            setDropdownValue(mitJfcTlDropdown, '66515', 'Burgess, Cristine', true);
+            console.log(`Updated Mit JFC TL to Cristine Burgess due to coordinator: ${specialCoordinators[coordinatorValue]}`);
+        } else {
+            // Set to default Jon Gardner
+            setDropdownValue(mitJfcTlDropdown, '163296', 'Gardner, Jon', true);
+            console.log('Updated Mit JFC TL to default Jon Gardner');
+        }
+    }
+
+    // Function to setup coordinator monitoring
+    function setupCoordinatorMonitor() {
+        console.log('Setting up coordinator monitoring...');
+        // Find coordinator dropdown
+        const coordinatorDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
+        let coordinatorDropdown = null;
+        coordinatorDropdowns.forEach(dropdown => {
+            const label = getParticipantLabel(dropdown);
+            if (label === 'Coordinator') {
+                coordinatorDropdown = dropdown;
+            }
+        });
+        if (!coordinatorDropdown) {
+            console.log('Coordinator dropdown not found');
+            return;
+        }
+        const coordinatorInput = coordinatorDropdown.querySelector('input.rcbInput');
+        const coordinatorHiddenField = coordinatorDropdown.querySelector('input[type="hidden"][name*="_ClientState"]');
+        if (!coordinatorInput || !coordinatorHiddenField) {
+            console.log('Coordinator input elements not found');
+            return;
+        }
+        // Monitor for changes to coordinator selection
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+                    try {
+                        const clientState = JSON.parse(coordinatorHiddenField.value);
+                        if (clientState && clientState.value) {
+                            checkAndUpdateMitJfcTl(clientState.value);
+                        }
+                    } catch (e) {
+                        console.log('Could not parse coordinator client state');
+                    }
+                }
+            });
+        });
+        observer.observe(coordinatorHiddenField, { attributes: true, attributeFilter: ['value'] });
+        // Also listen for change events
+        coordinatorInput.addEventListener('change', () => {
+            setTimeout(() => {
+                try {
+                    const clientState = JSON.parse(coordinatorHiddenField.value);
+                    if (clientState && clientState.value) {
+                        checkAndUpdateMitJfcTl(clientState.value);
+                    }
+                } catch (e) {
+                    console.log('Could not parse coordinator client state on change');
+                }
+            }, 100);
+        });
+        console.log('Coordinator monitoring setup complete');
     }
 
     // Function to set dropdown value
     function setDropdownValue(comboBoxElement, value, text, forceUpdate = false) {
         const input = comboBoxElement.querySelector('input.rcbInput');
         const hiddenField = comboBoxElement.querySelector('input[type="hidden"][name*="_ClientState"]');
-        
         if (!input || !hiddenField) return false;
 
         // Get a unique identifier for this field
         const fieldId = input.id || input.name;
-        
         // Don't override user changes unless forced
         if (!forceUpdate && userModifiedFields.has(fieldId)) {
             console.log(`Skipping ${fieldId} - user has modified this field`);
@@ -121,7 +211,6 @@
 
         // Update the visible input
         input.value = text;
-        
         // Handle empty/Select values
         if (value === '' || text === 'Select') {
             // For empty values, set proper empty state
@@ -134,7 +223,6 @@
                 checkedItemsTextOverflows: false
             };
             hiddenField.value = JSON.stringify(emptyClientState);
-            
             // Add the empty message class if needed
             if (!input.classList.contains('rcbEmptyMessage')) {
                 input.classList.add('rcbEmptyMessage');
@@ -149,23 +237,19 @@
                 checkedIndices: [],
                 checkedItemsTextOverflows: false
             };
-            
             hiddenField.value = JSON.stringify(clientState);
             // Remove the empty message class
             input.classList.remove('rcbEmptyMessage');
         }
-        
         // Trigger change events
         input.dispatchEvent(new Event('change', { bubbles: true }));
         hiddenField.dispatchEvent(new Event('change', { bubbles: true }));
-        
         return true;
     }
 
     // Function to set external participant defaults
     function setExternalParticipantDefaults() {
         console.log('Setting external participant defaults...');
-        
         Object.keys(defaultExternalParticipants).forEach(elementId => {
             const element = document.getElementById(elementId);
             if (element) {
@@ -173,7 +257,6 @@
                 if (dropdown) {
                     const setting = defaultExternalParticipants[elementId];
                     const success = setDropdownValue(dropdown, setting.value, setting.text);
-                    
                     if (success) {
                         console.log(`Set external participant ${elementId} to: ${setting.text}`);
                     } else {
@@ -191,7 +274,6 @@
     // Function to setup user change tracking
     function setupUserChangeTracking() {
         console.log('Setting up user change tracking...');
-        
         // Track changes to internal participant dropdowns
         const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox input.rcbInput');
         participantDropdowns.forEach(input => {
@@ -224,18 +306,14 @@
         }
 
         console.log('Applying configuration for:', officeName);
-        
-        // Find all participant dropdown elements
+               // Find all participant dropdown elements
         const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
-        
         participantDropdowns.forEach(dropdown => {
             const participantLabel = getParticipantLabel(dropdown);
-            
             if (participantLabel && config[participantLabel]) {
                 const setting = config[participantLabel];
                 // Force update for office changes
                 const success = setDropdownValue(dropdown, setting.value, setting.text, true);
-                
                 if (success) {
                     console.log(`Set ${participantLabel} to: ${setting.text}`);
                 } else {
@@ -255,7 +333,7 @@
     function setupOfficeMonitor() {
         const officeDropdown = document.querySelector('#ctl00_ContentPlaceHolder1_JobParentInformation_GenaralInfo_comboBoxOffice_Input');
         const officeHiddenField = document.querySelector('#ctl00_ContentPlaceHolder1_JobParentInformation_GenaralInfo_comboBoxOffice_ClientState');
-        
+
         if (!officeDropdown || !officeHiddenField) {
             console.error('Office dropdown elements not found');
             return;
@@ -293,16 +371,14 @@
     // Initialize when page is ready
     function initialize() {
         console.log('SERVPRO Auto-Fill script initialized');
-        
         // Set up monitoring for office changes
         setupOfficeMonitor();
-        
         // Set up user change tracking
         setTimeout(() => setupUserChangeTracking(), 1000);
-        
+        // Set up coordinator monitoring
+        setTimeout(() => setupCoordinatorMonitor(), 1200);
         // Always set external participant defaults first
         setTimeout(() => setExternalParticipantDefaults(), 500);
-        
         // Check if there's already a default office selected and apply its config
         const currentOffice = document.querySelector('#ctl00_ContentPlaceHolder1_JobParentInformation_GenaralInfo_comboBoxOffice_Input');
         if (currentOffice && currentOffice.value && officeConfigs[currentOffice.value]) {
