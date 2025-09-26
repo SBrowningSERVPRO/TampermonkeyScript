@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      2.0
-// @description  Auto-fill participant dropdowns based on selected SERVPRO office
-// @author       Samuel Browning
+// @version      3.2
+// @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
+// @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/Enterprise/Module/Job/CreateJob.aspx
 // @updateURL    https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/main/script.user.js
 // @downloadURL  https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/main/script.user.js
@@ -17,16 +17,192 @@
     // Track which fields have been manually changed by the user
     const userModifiedFields = new Set();
 
-    // Configuration for each office with their specific participant assignments
+    // Estimator database with supervisor and JFC mappings
+    const estimatorDatabase = {
+        // Chesterfield - Team One
+        '2071': { // Crenshaw, Justin
+            supervisor: { value: '21779', text: 'Team, One' },
+            jfc: { value: '154121', text: 'Luce, Ashlee' },
+            office: 'SERVPRO of Chesterfield'
+        },
+        '80083': { // McClellan, Hampton
+            supervisor: { value: '21779', text: 'Team, One' },
+            jfc: { value: '154121', text: 'Luce, Ashlee' },
+            office: 'SERVPRO of Chesterfield'
+        },
+        '11138': { // Slaasted, Evan
+            supervisor: { value: '21779', text: 'Team, One' },
+            jfc: { value: '6794', text: 'Parker, Sarah' },
+            office: 'SERVPRO of Chesterfield'
+        },
+        '2058': { // Ballas, Justin
+            supervisor: { value: '21779', text: 'Team, One' },
+            jfc: { value: '178596', text: 'Hanchey, Katelyn' },
+            office: 'SERVPRO of Chesterfield'
+        },
+        '28458': { // Snyder, Matthew
+            supervisor: { value: '21779', text: 'Team, One' },
+            jfc: { value: '205791', text: 'Greene, Dawn' },
+            office: 'SERVPRO of Chesterfield'
+        },
+        '80068': { // Bahen, Nathan
+            supervisor: { value: '21779', text: 'Team, One' },
+            jfc: { value: '45120', text: 'Rogers, Melanie' },
+            office: 'SERVPRO of Chesterfield'
+        },
+
+        // Chesterfield - Team Three
+        '24446': { // Fuentes-Bonilla, Nancy
+            supervisor: { value: '21781', text: 'Team, Three' },
+            jfc: { value: '178596', text: 'Hanchey, Katelyn' },
+            office: 'SERVPRO of Chesterfield'
+        },
+        '116116': { // Kurz, Aaron
+            supervisor: { value: '21781', text: 'Team, Three' },
+            jfc: { value: '205791', text: 'Greene, Dawn' },
+            office: 'SERVPRO of Chesterfield'
+        },
+        '20779': { // Fleming, Chris
+            supervisor: { value: '21781', text: 'Team, Three' },
+            jfc: { value: '45120', text: 'Rogers, Melanie' },
+            office: 'SERVPRO of Chesterfield'
+        },
+        '115061': { // Padilla, Paola
+            supervisor: { value: '21781', text: 'Team, Three' },
+            jfc: { value: '6794', text: 'Parker, Sarah' },
+            office: 'SERVPRO of Chesterfield'
+        },
+        '115064': { // Leon Carrasco, Andres
+            supervisor: { value: '21781', text: 'Team, Three' },
+            jfc: { value: '211953', text: 'Harrell, Madelyn' },
+            office: 'SERVPRO of Chesterfield'
+        },
+
+        // Chesterfield - Contents Team
+        '17879': { // Genest, Brian
+            supervisor: { value: '192286', text: 'Team, Contents - Chesterfield' },
+            jfc: { value: '191444', text: 'Echeverria, Cristal' },
+            office: 'SERVPRO of Chesterfield'
+        },
+        '192791': { // Solomon, Lenzy
+            supervisor: { value: '192286', text: 'Team, Contents - Chesterfield' },
+            jfc: { value: '191444', text: 'Echeverria, Cristal' },
+            office: 'SERVPRO of Chesterfield'
+        },
+        '195592': { // Romano, John
+            supervisor: { value: '192286', text: 'Team, Contents - Chesterfield' },
+            jfc: { value: '191444', text: 'Echeverria, Cristal' },
+            office: 'SERVPRO of Chesterfield'
+        },
+
+        // Chesterfield - Direct Sales
+        '2099': { // Morgan, Robert
+            supervisor: { value: '10803', text: 'Direct, Sales' },
+            jfc: { value: '45120', text: 'Rogers, Melanie' },
+            office: 'SERVPRO of Chesterfield'
+        },
+
+        // Chesapeake - Team One
+        '146894': { // Clapp, Steven
+            supervisor: { value: '151611', text: 'Chesapeake, Team One' },
+            jfc: { value: '173722', text: 'Jackson, Courtney' },
+            office: 'SERVPRO of Chesapeake'
+        },
+        '101500': { // Williams, Dequan
+            supervisor: { value: '151611', text: 'Chesapeake, Team One' },
+            jfc: { value: '143694', text: 'Mason, Monica' },
+            office: 'SERVPRO of Chesapeake'
+        },
+        '146895': { // Perry, Demetrius
+            supervisor: { value: '151611', text: 'Chesapeake, Team One' },
+            jfc: { value: '173730', text: 'Moore, Tracy' },
+            office: 'SERVPRO of Chesapeake'
+        },
+        '205298': { // Nichols, Charles
+            supervisor: { value: '151611', text: 'Chesapeake, Team One' },
+            jfc: { value: '173730', text: 'Moore, Tracy' },
+            office: 'SERVPRO of Chesapeake'
+        },
+
+        // Chesapeake - Team Two
+        '3762': { // Proffitt, Matthew
+            supervisor: { value: '173947', text: 'Chesapeake, Team Two' },
+            jfc: { value: '192734', text: 'Carden, Valerie' },
+            office: 'SERVPRO of Chesapeake'
+        },
+        '90653': { // Reid, Darryl
+            supervisor: { value: '173947', text: 'Chesapeake, Team Two' },
+            jfc: { value: '173722', text: 'Jackson, Courtney' },
+            office: 'SERVPRO of Chesapeake'
+        },
+        '95381': { // Smith, James
+            supervisor: { value: '173947', text: 'Chesapeake, Team Two' },
+            jfc: { value: '173730', text: 'Moore, Tracy' },
+            office: 'SERVPRO of Chesapeake'
+        },
+        '144699': { // OQuinn, Mikkarice
+            supervisor: { value: '173947', text: 'Chesapeake, Team Two' },
+            jfc: { value: '192734', text: 'Carden, Valerie' },
+            office: 'SERVPRO of Chesapeake'
+        },
+
+        // Chesapeake - Contents
+        '161878': { // Kimbrough, Brandi
+            supervisor: { value: '86750', text: 'Team, Chesapeake - Contents' },
+            jfc: { value: '143694', text: 'Mason, Monica' },
+            office: 'SERVPRO of Chesapeake'
+        },
+
+        // Arlington - Team Arlington
+        '177893': { // Fernandez, Alexis
+            supervisor: { value: '177988', text: 'Arlington, Team' },
+            jfc: { value: '168201', text: 'Clanton, Trameca' },
+            office: 'SERVPRO of Arlington',
+            backOffice: { value: '179363', text: 'Team, Water' }
+        },
+        '177894': { // Khalaf, Qusay
+            supervisor: { value: '177988', text: 'Arlington, Team' },
+            jfc: { value: '168201', text: 'Clanton, Trameca' },
+            office: 'SERVPRO of Arlington',
+            backOffice: { value: '179363', text: 'Team, Water' }
+        },
+        '193238': { // Lucas, Teddy
+            supervisor: { value: '177988', text: 'Arlington, Team' },
+            jfc: { value: '192726', text: 'Oden-McIntyre, Lolita' },
+            office: 'SERVPRO of Arlington',
+            backOffice: { value: '179363', text: 'Team, Water' }
+        },
+        '177900': { // Thompson, Terry - Special case
+            supervisor: { value: '177988', text: 'Arlington, Team' },
+            office: 'SERVPRO of Arlington',
+            special: 'terry_thompson'
+        }
+    };
+
+    // Terry Thompson job type configurations
+    const terryThompsonConfigs = {
+        'water': {
+            backOffice: { value: '179363', text: 'Team, Water' },
+            jfc: { value: '168201', text: 'Clanton, Trameca' }
+        },
+        'contents': {
+            backOffice: { value: '179362', text: 'Team, Contents - Arlington' },
+            jfc: { value: '177870', text: 'Riaz, Saud' }
+        },
+        'recon': {
+            backOffice: { value: '179364', text: 'Team, Recon Arlington' },
+            jfc: { value: '193188', text: 'Ange, Diane' }
+        }
+    };
+
+    // Base office configurations (for fields not handled by estimator selection)
     const officeConfigs = {
         'SERVPRO of Chesterfield': {
-            'Supervisor': { value: '', text: 'Select' },
             'Foreman': { value: '3347', text: 'Not, Applicable' },
             'Accounting': { value: '95680', text: 'Davis, Margaret' },
             'Marketing': { value: '3347', text: 'Not, Applicable' },
             'Recon PM': { value: '3347', text: 'Not, Applicable' },
             'Accounts Receivable': { value: '203307', text: 'Eddy, Connie' },
-            'Back Office Team': { value: '3347', text: 'Not, Applicable' },
             'Recon Follow Up': { value: '193188', text: 'Ange, Diane' },
             'ASM': { value: '169925', text: 'Campos, Jill' },
             'FNOL': { value: '206376', text: 'FNOL, Chesterfield' },
@@ -41,7 +217,6 @@
             'Mit JFC TL': { value: '163296', text: 'Gardner, Jon' }
         },
         'SERVPRO of Chesapeake': {
-            'Supervisor': { value: '', text: 'Select' },
             'Foreman': { value: '3347', text: 'Not, Applicable' },
             'Accounting': { value: '140311', text: 'Shippee, Kathryn' },
             'Marketing': { value: '3347', text: 'Not, Applicable' },
@@ -62,13 +237,11 @@
             'Mit JFC TL': { value: '163296', text: 'Gardner, Jon' }
         },
         'SERVPRO of Arlington': {
-            'Supervisor': { value: '177988', text: 'Arlington, Team' },
             'Foreman': { value: '3347', text: 'Not, Applicable' },
             'Accounting': { value: '177881', text: 'Matta, Sreelakshmi' },
             'Marketing': { value: '3347', text: 'Not, Applicable' },
             'Recon PM': { value: '3347', text: 'Not, Applicable' },
             'Accounts Receivable': { value: '213542', text: 'Harrison, Lamiyah' },
-            'Back Office Team': { value: '179363', text: 'Team, Water' },
             'Recon Follow Up': { value: '193188', text: 'Ange, Diane' },
             'ASM': { value: '169925', text: 'Campos, Jill' },
             'FNOL': { value: '206378', text: 'FNOL, Arlington' },
@@ -84,7 +257,7 @@
         }
     };
 
-    // Default external participant values that should always be set
+    // Default external participant values
     const defaultExternalParticipants = {
         'ctl00_ContentPlaceHolder1_JobParentInformation_ExternalParticipants_SystemCompanyParticipantCombobox_2': { value: '2169730', text: 'Not Applicable' },
         'ctl00_ContentPlaceHolder1_JobParentInformation_ExternalParticipants_SystemIndividualParticipantCombobox_4': { value: '8189271', text: 'Applicable, Not' },
@@ -113,57 +286,302 @@
         return labelSpan ? labelSpan.textContent.trim() : null;
     }
 
+    // Function to set dropdown value
+    function setDropdownValue(comboBoxElement, value, text, forceUpdate = false) {
+        const input = comboBoxElement.querySelector('input.rcbInput');
+        const hiddenField = comboBoxElement.querySelector('input[type="hidden"][name*="_ClientState"]');
+        if (!input || !hiddenField) return false;
+
+        const fieldId = input.id || input.name;
+        if (!forceUpdate && userModifiedFields.has(fieldId)) {
+            console.log(`Skipping ${fieldId} - user has modified this field`);
+            return true;
+        }
+
+        input.value = text;
+        if (value === '' || text === 'Select') {
+            const emptyClientState = {
+                logEntries: [],
+                value: "",
+                text: "",
+                enabled: true,
+                checkedIndices: [],
+                checkedItemsTextOverflows: false
+            };
+            hiddenField.value = JSON.stringify(emptyClientState);
+            if (!input.classList.contains('rcbEmptyMessage')) {
+                input.classList.add('rcbEmptyMessage');
+            }
+        } else {
+            const clientState = {
+                logEntries: [],
+                value: value,
+                text: text,
+                enabled: true,
+                checkedIndices: [],
+                checkedItemsTextOverflows: false
+            };
+            hiddenField.value = JSON.stringify(clientState);
+            input.classList.remove('rcbEmptyMessage');
+        }
+
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        hiddenField.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+    }
+
+    // Function to create Terry Thompson job type popup
+    function createTerryThompsonPopup(estimatorDropdown) {
+        // Remove any existing popup
+        const existingPopup = document.getElementById('terry-popup');
+        if (existingPopup) {
+            existingPopup.remove();
+        }
+
+        const popup = document.createElement('div');
+        popup.id = 'terry-popup';
+        popup.style.cssText = `
+            position: fixed; /* FIXED: Changed position to 'fixed' to ensure it floats on the screen correctly */
+            background: white;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 10000;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            min-width: 200px;
+        `;
+
+        popup.innerHTML = `
+            <div style="margin-bottom: 10px; font-weight: bold; color: #333;">
+                Terry Thompson - Select Job Type:
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <button id="terry-water" style="padding: 8px 12px; border: 1px solid #007cba; background: #007cba; color: white; border-radius: 4px; cursor: pointer;">Water/Other</button>
+                <button id="terry-contents" style="padding: 8px 12px; border: 1px solid #007cba; background: #007cba; color: white; border-radius: 4px; cursor: pointer;">Contents</button>
+                <button id="terry-recon" style="padding: 8px 12px; border: 1px solid #007cba; background: #007cba; color: white; border-radius: 4px; cursor: pointer;">Recon</button>
+            </div>
+        `;
+
+        // Position popup next to estimator dropdown
+        const rect = estimatorDropdown.getBoundingClientRect();
+        popup.style.left = (rect.right + 10) + 'px';
+        popup.style.top = rect.top + 'px';
+
+        document.body.appendChild(popup);
+
+        // Add button event listeners
+        document.getElementById('terry-water').addEventListener('click', () => applyTerryThompsonConfig('water', popup));
+        document.getElementById('terry-contents').addEventListener('click', () => applyTerryThompsonConfig('contents', popup));
+        document.getElementById('terry-recon').addEventListener('click', () => applyTerryThompsonConfig('recon', popup));
+
+        // Close popup when clicking outside
+        setTimeout(() => {
+            document.addEventListener('click', function closePopup(e) {
+                if (!popup.contains(e.target)) {
+                    popup.remove();
+                    document.removeEventListener('click', closePopup);
+                }
+            });
+        }, 100);
+    }
+
+    // Function to apply Terry Thompson configuration
+    function applyTerryThompsonConfig(jobType, popup) {
+        const config = terryThompsonConfigs[jobType];
+        if (!config) return;
+
+        // Find and update Back Office Team
+        const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
+        participantDropdowns.forEach(dropdown => {
+            const label = getParticipantLabel(dropdown);
+            if (label === 'Back Office Team') {
+                setDropdownValue(dropdown, config.backOffice.value, config.backOffice.text, true);
+                console.log(`Set Back Office Team to: ${config.backOffice.text}`);
+            }
+        });
+
+        // Find and update Coordinator (JFC)
+        participantDropdowns.forEach(dropdown => {
+            const label = getParticipantLabel(dropdown);
+            if (label === 'Coordinator') {
+                setDropdownValue(dropdown, config.jfc.value, config.jfc.text, true);
+                console.log(`Set Coordinator to: ${config.jfc.text}`);
+            }
+        });
+
+        popup.remove();
+        console.log(`Applied Terry Thompson ${jobType} configuration`);
+    }
+
+    // Function to apply estimator-based configuration
+    function applyEstimatorConfig(estimatorValue) {
+        const estimatorData = estimatorDatabase[estimatorValue];
+        if (!estimatorData) {
+            console.log('No estimator configuration found for value:', estimatorValue);
+            return;
+        }
+
+        console.log('Applying estimator configuration for:', estimatorData);
+
+        const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
+
+        // Handle special case for Terry Thompson
+        if (estimatorData.special === 'terry_thompson') {
+            // Set supervisor
+            participantDropdowns.forEach(dropdown => {
+                const label = getParticipantLabel(dropdown);
+                if (label === 'Supervisor') {
+                    setDropdownValue(dropdown, estimatorData.supervisor.value, estimatorData.supervisor.text, true);
+                    console.log(`Set Supervisor to: ${estimatorData.supervisor.text}`);
+                }
+            });
+
+            // Show popup for job type selection
+            const estimatorDropdown = Array.from(participantDropdowns).find(dropdown => {
+                return getParticipantLabel(dropdown) === 'Estimator';
+            });
+            if (estimatorDropdown) {
+                createTerryThompsonPopup(estimatorDropdown);
+            }
+            return;
+        }
+
+        // Standard estimator configuration
+        participantDropdowns.forEach(dropdown => {
+            const label = getParticipantLabel(dropdown);
+
+            if (label === 'Supervisor' && estimatorData.supervisor) {
+                setDropdownValue(dropdown, estimatorData.supervisor.value, estimatorData.supervisor.text, true);
+                console.log(`Set Supervisor to: ${estimatorData.supervisor.text}`);
+            }
+
+            if (label === 'Coordinator' && estimatorData.jfc) {
+                setDropdownValue(dropdown, estimatorData.jfc.value, estimatorData.jfc.text, true);
+                console.log(`Set Coordinator to: ${estimatorData.jfc.text}`);
+            }
+
+            if (label === 'Back Office Team' && estimatorData.backOffice) {
+                setDropdownValue(dropdown, estimatorData.backOffice.value, estimatorData.backOffice.text, true);
+                console.log(`Set Back Office Team to: ${estimatorData.backOffice.text}`);
+            }
+        });
+    }
+
+    // Function to setup estimator monitoring
+    function setupEstimatorMonitor() {
+        console.log('Setting up estimator monitoring...');
+        const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
+        let estimatorDropdown = null;
+
+        participantDropdowns.forEach(dropdown => {
+            const label = getParticipantLabel(dropdown);
+            if (label === 'Estimator') {
+                estimatorDropdown = dropdown;
+            }
+        });
+
+        if (!estimatorDropdown) {
+            console.log('Estimator dropdown not found');
+            return;
+        }
+
+        const estimatorInput = estimatorDropdown.querySelector('input.rcbInput');
+        const estimatorHiddenField = estimatorDropdown.querySelector('input[type="hidden"][name*="_ClientState"]');
+
+        if (!estimatorInput || !estimatorHiddenField) {
+            console.log('Estimator input elements not found');
+            return;
+        }
+
+        // Monitor for changes to estimator selection
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+                    try {
+                        const clientState = JSON.parse(estimatorHiddenField.value);
+                        if (clientState && clientState.value) {
+                            applyEstimatorConfig(clientState.value);
+                        }
+                    } catch (e) {
+                        console.log('Could not parse estimator client state');
+                    }
+                }
+            });
+        });
+
+        observer.observe(estimatorHiddenField, { attributes: true, attributeFilter: ['value'] });
+
+        estimatorInput.addEventListener('change', () => {
+            setTimeout(() => {
+                try {
+                    const clientState = JSON.parse(estimatorHiddenField.value);
+                    if (clientState && clientState.value) {
+                        applyEstimatorConfig(clientState.value);
+                    }
+                } catch (e) {
+                    console.log('Could not parse estimator client state on change');
+                }
+            }, 100);
+        });
+
+        console.log('Estimator monitoring setup complete');
+    }
+
     // Function to check and update Mit JFC TL based on coordinator
     function checkAndUpdateMitJfcTl(coordinatorValue) {
-        console.log('Checking coordinator value:', coordinatorValue);
-        // Find the Mit JFC TL dropdown
-        const mitJfcTlDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
+        console.log('Checking coordinator value for Mit JFC TL:', coordinatorValue);
+        const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
         let mitJfcTlDropdown = null;
-        mitJfcTlDropdowns.forEach(dropdown => {
+
+        participantDropdowns.forEach(dropdown => {
             const label = getParticipantLabel(dropdown);
             if (label === 'Mit JFC TL') {
                 mitJfcTlDropdown = dropdown;
             }
         });
+
         if (!mitJfcTlDropdown) {
             console.log('Mit JFC TL dropdown not found');
             return;
         }
-        // Check if coordinator is in special list
+
         if (specialCoordinators[coordinatorValue]) {
-            // Set to Cristine Burgess
             setDropdownValue(mitJfcTlDropdown, '66515', 'Burgess, Cristine', true);
             console.log(`Updated Mit JFC TL to Cristine Burgess due to coordinator: ${specialCoordinators[coordinatorValue]}`);
         } else {
-            // Set to default Jon Gardner
             setDropdownValue(mitJfcTlDropdown, '163296', 'Gardner, Jon', true);
             console.log('Updated Mit JFC TL to default Jon Gardner');
         }
     }
 
-    // Function to setup coordinator monitoring
+    // Function to setup coordinator monitoring for Mit JFC TL
     function setupCoordinatorMonitor() {
         console.log('Setting up coordinator monitoring...');
-        // Find coordinator dropdown
-        const coordinatorDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
+        const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
         let coordinatorDropdown = null;
-        coordinatorDropdowns.forEach(dropdown => {
+
+        participantDropdowns.forEach(dropdown => {
             const label = getParticipantLabel(dropdown);
             if (label === 'Coordinator') {
                 coordinatorDropdown = dropdown;
             }
         });
+
         if (!coordinatorDropdown) {
             console.log('Coordinator dropdown not found');
             return;
         }
+
         const coordinatorInput = coordinatorDropdown.querySelector('input.rcbInput');
         const coordinatorHiddenField = coordinatorDropdown.querySelector('input[type="hidden"][name*="_ClientState"]');
+
         if (!coordinatorInput || !coordinatorHiddenField) {
             console.log('Coordinator input elements not found');
             return;
         }
-        // Monitor for changes to coordinator selection
+
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
@@ -178,8 +596,9 @@
                 }
             });
         });
+
         observer.observe(coordinatorHiddenField, { attributes: true, attributeFilter: ['value'] });
-        // Also listen for change events
+
         coordinatorInput.addEventListener('change', () => {
             setTimeout(() => {
                 try {
@@ -192,59 +611,8 @@
                 }
             }, 100);
         });
+
         console.log('Coordinator monitoring setup complete');
-    }
-
-    // Function to set dropdown value
-    function setDropdownValue(comboBoxElement, value, text, forceUpdate = false) {
-        const input = comboBoxElement.querySelector('input.rcbInput');
-        const hiddenField = comboBoxElement.querySelector('input[type="hidden"][name*="_ClientState"]');
-        if (!input || !hiddenField) return false;
-
-        // Get a unique identifier for this field
-        const fieldId = input.id || input.name;
-        // Don't override user changes unless forced
-        if (!forceUpdate && userModifiedFields.has(fieldId)) {
-            console.log(`Skipping ${fieldId} - user has modified this field`);
-            return true;
-        }
-
-        // Update the visible input
-        input.value = text;
-        // Handle empty/Select values
-        if (value === '' || text === 'Select') {
-            // For empty values, set proper empty state
-            const emptyClientState = {
-                logEntries: [],
-                value: "",
-                text: "",
-                enabled: true,
-                checkedIndices: [],
-                checkedItemsTextOverflows: false
-            };
-            hiddenField.value = JSON.stringify(emptyClientState);
-            // Add the empty message class if needed
-            if (!input.classList.contains('rcbEmptyMessage')) {
-                input.classList.add('rcbEmptyMessage');
-            }
-        } else {
-            // Update the hidden field with the client state JSON
-            const clientState = {
-                logEntries: [],
-                value: value,
-                text: text,
-                enabled: true,
-                checkedIndices: [],
-                checkedItemsTextOverflows: false
-            };
-            hiddenField.value = JSON.stringify(clientState);
-            // Remove the empty message class
-            input.classList.remove('rcbEmptyMessage');
-        }
-        // Trigger change events
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-        hiddenField.dispatchEvent(new Event('change', { bubbles: true }));
-        return true;
     }
 
     // Function to set external participant defaults
@@ -257,6 +625,7 @@
                 if (dropdown) {
                     const setting = defaultExternalParticipants[elementId];
                     const success = setDropdownValue(dropdown, setting.value, setting.text);
+
                     if (success) {
                         console.log(`Set external participant ${elementId} to: ${setting.text}`);
                     } else {
@@ -274,7 +643,6 @@
     // Function to setup user change tracking
     function setupUserChangeTracking() {
         console.log('Setting up user change tracking...');
-        // Track changes to internal participant dropdowns
         const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox input.rcbInput');
         participantDropdowns.forEach(input => {
             input.addEventListener('change', (e) => {
@@ -283,7 +651,6 @@
                 console.log(`User modified field: ${fieldId}`);
             });
 
-            // Also track clicks on the dropdown
             const arrow = input.closest('.RadComboBox').querySelector('.rcbArrowCell a');
             if (arrow) {
                 arrow.addEventListener('click', () => {
@@ -291,13 +658,13 @@
                         const fieldId = input.id || input.name;
                         userModifiedFields.add(fieldId);
                         console.log(`User interacted with field: ${fieldId}`);
-                    }, 500); // Wait for potential selection
+                    }, 500);
                 });
             }
         });
     }
 
-    // Function to apply office configuration
+    // Function to apply office configuration (for non-estimator fields)
     function applyOfficeConfig(officeName) {
         const config = officeConfigs[officeName];
         if (!config) {
@@ -305,27 +672,28 @@
             return;
         }
 
-        console.log('Applying configuration for:', officeName);
-               // Find all participant dropdown elements
+        console.log('Applying office configuration for:', officeName);
+
         const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
         participantDropdowns.forEach(dropdown => {
             const participantLabel = getParticipantLabel(dropdown);
+
+            // Skip fields that are handled by estimator selection
+            if (['Estimator', 'Supervisor', 'Coordinator', 'Back Office Team'].includes(participantLabel)) {
+                return;
+            }
+
             if (participantLabel && config[participantLabel]) {
                 const setting = config[participantLabel];
-                // Force update for office changes
                 const success = setDropdownValue(dropdown, setting.value, setting.text, true);
+
                 if (success) {
                     console.log(`Set ${participantLabel} to: ${setting.text}`);
                 } else {
                     console.error(`Failed to set ${participantLabel}`);
                 }
-            } else if (participantLabel) {
-                // For participants not in config (like Estimator, Coordinator), leave as "Select"
-                console.log(`No configuration for ${participantLabel}, leaving as Select`);
             }
         });
-
-        // Always set external participant defaults after setting office-specific config
         setTimeout(() => setExternalParticipantDefaults(), 200);
     }
 
@@ -339,14 +707,12 @@
             return;
         }
 
-        // Monitor for changes to the office selection
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
                     const newOffice = officeDropdown.value;
                     if (newOffice && officeConfigs[newOffice]) {
                         console.log('Office changed to:', newOffice);
-                        // Small delay to ensure the page has updated
                         setTimeout(() => applyOfficeConfig(newOffice), 100);
                     }
                 }
@@ -356,7 +722,6 @@
         observer.observe(officeDropdown, { attributes: true, attributeFilter: ['value'] });
         observer.observe(officeHiddenField, { attributes: true, attributeFilter: ['value'] });
 
-        // Also listen for change events
         officeDropdown.addEventListener('change', () => {
             const officeName = officeDropdown.value;
             if (officeName && officeConfigs[officeName]) {
@@ -364,22 +729,18 @@
                 setTimeout(() => applyOfficeConfig(officeName), 100);
             }
         });
-
         console.log('Office monitor setup complete');
     }
 
     // Initialize when page is ready
     function initialize() {
-        console.log('SERVPRO Auto-Fill script initialized');
-        // Set up monitoring for office changes
+        console.log('SERVPRO Auto-Fill script v3.2 initialized');
         setupOfficeMonitor();
-        // Set up user change tracking
         setTimeout(() => setupUserChangeTracking(), 1000);
-        // Set up coordinator monitoring
-        setTimeout(() => setupCoordinatorMonitor(), 1200);
-        // Always set external participant defaults first
+        setTimeout(() => setupEstimatorMonitor(), 1200);
+        setTimeout(() => setupCoordinatorMonitor(), 1400);
         setTimeout(() => setExternalParticipantDefaults(), 500);
-        // Check if there's already a default office selected and apply its config
+
         const currentOffice = document.querySelector('#ctl00_ContentPlaceHolder1_JobParentInformation_GenaralInfo_comboBoxOffice_Input');
         if (currentOffice && currentOffice.value && officeConfigs[currentOffice.value]) {
             console.log('Found default office:', currentOffice.value);
