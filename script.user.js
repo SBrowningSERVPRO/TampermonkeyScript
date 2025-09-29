@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      3.2
+// @version      3.3
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/Enterprise/Module/Job/CreateJob.aspx
@@ -214,7 +214,7 @@
             'Upload Updates': { value: '206392', text: 'Upload, Updates' },
             'Warehouse Manager': { value: '27679', text: 'Harvey, Andrew' },
             'Contents PM': { value: '3347', text: 'Not, Applicable' },
-            'Mit JFC TL': { value: '163296', text: 'Gardner, Jon' }
+            'Mit JFC TL': { value: '66515', text: 'Burgess, Cristine' } // UPDATED: Set as default for all jobs
         },
         'SERVPRO of Chesapeake': {
             'Foreman': { value: '3347', text: 'Not, Applicable' },
@@ -234,7 +234,7 @@
             'Upload Updates': { value: '206392', text: 'Upload, Updates' },
             'Warehouse Manager': { value: '151443', text: 'Kilgore, Clayton' },
             'Contents PM': { value: '3347', text: 'Not, Applicable' },
-            'Mit JFC TL': { value: '163296', text: 'Gardner, Jon' }
+            'Mit JFC TL': { value: '66515', text: 'Burgess, Cristine' } // UPDATED: Set as default for all jobs
         },
         'SERVPRO of Arlington': {
             'Foreman': { value: '3347', text: 'Not, Applicable' },
@@ -253,7 +253,7 @@
             'Upload Updates': { value: '206392', text: 'Upload, Updates' },
             'Warehouse Manager': { value: '3347', text: 'Not, Applicable' },
             'Contents PM': { value: '3347', text: 'Not, Applicable' },
-            'Mit JFC TL': { value: '163296', text: 'Gardner, Jon' }
+            'Mit JFC TL': { value: '66515', text: 'Burgess, Cristine' } // UPDATED: Set as default for all jobs
         }
     };
 
@@ -267,16 +267,7 @@
         'ctl00_ContentPlaceHolder1_JobParentInformation_ExternalParticipants_SystemIndividualParticipantCombobox_33': { value: '3450405', text: 'Applicable, Not' }
     };
 
-    // Special coordinators that require Cristine Burgess as Mit JFC TL
-    const specialCoordinators = {
-        '154121': 'Ashlee Luce',
-        '173722': 'Courtney Jackson',
-        '173730': 'Tracy Moore',
-        '143694': 'Monica Mason',
-        '192734': 'Valerie Carden',
-        '211953': 'Madelyn Harrell',
-        '213890': 'Bree Kozlowski'
-    };
+    // REMOVED: specialCoordinators object is no longer needed as Mit JFC TL is now static.
 
     // Function to get participant label from the DOM element
     function getParticipantLabel(comboBoxElement) {
@@ -341,7 +332,7 @@
         const popup = document.createElement('div');
         popup.id = 'terry-popup';
         popup.style.cssText = `
-            position: fixed; /* FIXED: Changed position to 'fixed' to ensure it floats on the screen correctly */
+            position: fixed;
             background: white;
             border: 2px solid #333;
             border-radius: 8px;
@@ -529,91 +520,8 @@
         console.log('Estimator monitoring setup complete');
     }
 
-    // Function to check and update Mit JFC TL based on coordinator
-    function checkAndUpdateMitJfcTl(coordinatorValue) {
-        console.log('Checking coordinator value for Mit JFC TL:', coordinatorValue);
-        const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
-        let mitJfcTlDropdown = null;
-
-        participantDropdowns.forEach(dropdown => {
-            const label = getParticipantLabel(dropdown);
-            if (label === 'Mit JFC TL') {
-                mitJfcTlDropdown = dropdown;
-            }
-        });
-
-        if (!mitJfcTlDropdown) {
-            console.log('Mit JFC TL dropdown not found');
-            return;
-        }
-
-        if (specialCoordinators[coordinatorValue]) {
-            setDropdownValue(mitJfcTlDropdown, '66515', 'Burgess, Cristine', true);
-            console.log(`Updated Mit JFC TL to Cristine Burgess due to coordinator: ${specialCoordinators[coordinatorValue]}`);
-        } else {
-            setDropdownValue(mitJfcTlDropdown, '163296', 'Gardner, Jon', true);
-            console.log('Updated Mit JFC TL to default Jon Gardner');
-        }
-    }
-
-    // Function to setup coordinator monitoring for Mit JFC TL
-    function setupCoordinatorMonitor() {
-        console.log('Setting up coordinator monitoring...');
-        const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
-        let coordinatorDropdown = null;
-
-        participantDropdowns.forEach(dropdown => {
-            const label = getParticipantLabel(dropdown);
-            if (label === 'Coordinator') {
-                coordinatorDropdown = dropdown;
-            }
-        });
-
-        if (!coordinatorDropdown) {
-            console.log('Coordinator dropdown not found');
-            return;
-        }
-
-        const coordinatorInput = coordinatorDropdown.querySelector('input.rcbInput');
-        const coordinatorHiddenField = coordinatorDropdown.querySelector('input[type="hidden"][name*="_ClientState"]');
-
-        if (!coordinatorInput || !coordinatorHiddenField) {
-            console.log('Coordinator input elements not found');
-            return;
-        }
-
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
-                    try {
-                        const clientState = JSON.parse(coordinatorHiddenField.value);
-                        if (clientState && clientState.value) {
-                            checkAndUpdateMitJfcTl(clientState.value);
-                        }
-                    } catch (e) {
-                        console.log('Could not parse coordinator client state');
-                    }
-                }
-            });
-        });
-
-        observer.observe(coordinatorHiddenField, { attributes: true, attributeFilter: ['value'] });
-
-        coordinatorInput.addEventListener('change', () => {
-            setTimeout(() => {
-                try {
-                    const clientState = JSON.parse(coordinatorHiddenField.value);
-                    if (clientState && clientState.value) {
-                        checkAndUpdateMitJfcTl(clientState.value);
-                    }
-                } catch (e) {
-                    console.log('Could not parse coordinator client state on change');
-                }
-            }, 100);
-        });
-
-        console.log('Coordinator monitoring setup complete');
-    }
+    // REMOVED: checkAndUpdateMitJfcTl function is no longer needed.
+    // REMOVED: setupCoordinatorMonitor function is no longer needed.
 
     // Function to set external participant defaults
     function setExternalParticipantDefaults() {
@@ -734,11 +642,11 @@
 
     // Initialize when page is ready
     function initialize() {
-        console.log('SERVPRO Auto-Fill script v3.2 initialized');
+        console.log('SERVPRO Auto-Fill script v3.3 initialized');
         setupOfficeMonitor();
         setTimeout(() => setupUserChangeTracking(), 1000);
         setTimeout(() => setupEstimatorMonitor(), 1200);
-        setTimeout(() => setupCoordinatorMonitor(), 1400);
+        // REMOVED: Call to setupCoordinatorMonitor is no longer needed.
         setTimeout(() => setExternalParticipantDefaults(), 500);
 
         const currentOffice = document.querySelector('#ctl00_ContentPlaceHolder1_JobParentInformation_GenaralInfo_comboBoxOffice_Input');
