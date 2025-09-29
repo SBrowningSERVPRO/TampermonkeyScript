@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      3.3
+// @version      3.4
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/Enterprise/Module/Job/CreateJob.aspx
@@ -203,6 +203,7 @@
             'Marketing': { value: '3347', text: 'Not, Applicable' },
             'Recon PM': { value: '3347', text: 'Not, Applicable' },
             'Accounts Receivable': { value: '203307', text: 'Eddy, Connie' },
+            'Back Office Team': { value: '3347', text: 'Not, Applicable' },
             'Recon Follow Up': { value: '193188', text: 'Ange, Diane' },
             'ASM': { value: '169925', text: 'Campos, Jill' },
             'FNOL': { value: '206376', text: 'FNOL, Chesterfield' },
