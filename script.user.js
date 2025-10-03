@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      3.4
+// @version      3.5
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/Enterprise/Module/Job/CreateJob.aspx
@@ -215,7 +215,7 @@
             'Upload Updates': { value: '206392', text: 'Upload, Updates' },
             'Warehouse Manager': { value: '27679', text: 'Harvey, Andrew' },
             'Contents PM': { value: '3347', text: 'Not, Applicable' },
-            'Mit JFC TL': { value: '66515', text: 'Burgess, Cristine' } // UPDATED: Set as default for all jobs
+            'Mit JFC TL': { value: '66515', text: 'Burgess, Cristine' }
         },
         'SERVPRO of Chesapeake': {
             'Foreman': { value: '3347', text: 'Not, Applicable' },
@@ -235,7 +235,7 @@
             'Upload Updates': { value: '206392', text: 'Upload, Updates' },
             'Warehouse Manager': { value: '151443', text: 'Kilgore, Clayton' },
             'Contents PM': { value: '3347', text: 'Not, Applicable' },
-            'Mit JFC TL': { value: '66515', text: 'Burgess, Cristine' } // UPDATED: Set as default for all jobs
+            'Mit JFC TL': { value: '66515', text: 'Burgess, Cristine' }
         },
         'SERVPRO of Arlington': {
             'Foreman': { value: '3347', text: 'Not, Applicable' },
@@ -254,7 +254,7 @@
             'Upload Updates': { value: '206392', text: 'Upload, Updates' },
             'Warehouse Manager': { value: '3347', text: 'Not, Applicable' },
             'Contents PM': { value: '3347', text: 'Not, Applicable' },
-            'Mit JFC TL': { value: '66515', text: 'Burgess, Cristine' } // UPDATED: Set as default for all jobs
+            'Mit JFC TL': { value: '66515', text: 'Burgess, Cristine' }
         }
     };
 
@@ -267,8 +267,6 @@
         'ctl00_ContentPlaceHolder1_JobParentInformation_ExternalParticipants_SystemCompanyParticipantCombobox_24': { value: '997313', text: 'not applicable' },
         'ctl00_ContentPlaceHolder1_JobParentInformation_ExternalParticipants_SystemIndividualParticipantCombobox_33': { value: '3450405', text: 'Applicable, Not' }
     };
-
-    // REMOVED: specialCoordinators object is no longer needed as Mit JFC TL is now static.
 
     // Function to get participant label from the DOM element
     function getParticipantLabel(comboBoxElement) {
@@ -324,7 +322,6 @@
 
     // Function to create Terry Thompson job type popup
     function createTerryThompsonPopup(estimatorDropdown) {
-        // Remove any existing popup
         const existingPopup = document.getElementById('terry-popup');
         if (existingPopup) {
             existingPopup.remove();
@@ -356,19 +353,16 @@
             </div>
         `;
 
-        // Position popup next to estimator dropdown
         const rect = estimatorDropdown.getBoundingClientRect();
         popup.style.left = (rect.right + 10) + 'px';
         popup.style.top = rect.top + 'px';
 
         document.body.appendChild(popup);
 
-        // Add button event listeners
         document.getElementById('terry-water').addEventListener('click', () => applyTerryThompsonConfig('water', popup));
         document.getElementById('terry-contents').addEventListener('click', () => applyTerryThompsonConfig('contents', popup));
         document.getElementById('terry-recon').addEventListener('click', () => applyTerryThompsonConfig('recon', popup));
 
-        // Close popup when clicking outside
         setTimeout(() => {
             document.addEventListener('click', function closePopup(e) {
                 if (!popup.contains(e.target)) {
@@ -384,7 +378,6 @@
         const config = terryThompsonConfigs[jobType];
         if (!config) return;
 
-        // Find and update Back Office Team
         const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
         participantDropdowns.forEach(dropdown => {
             const label = getParticipantLabel(dropdown);
@@ -394,7 +387,6 @@
             }
         });
 
-        // Find and update Coordinator (JFC)
         participantDropdowns.forEach(dropdown => {
             const label = getParticipantLabel(dropdown);
             if (label === 'Coordinator') {
@@ -421,7 +413,6 @@
 
         // Handle special case for Terry Thompson
         if (estimatorData.special === 'terry_thompson') {
-            // Set supervisor
             participantDropdowns.forEach(dropdown => {
                 const label = getParticipantLabel(dropdown);
                 if (label === 'Supervisor') {
@@ -430,7 +421,6 @@
                 }
             });
 
-            // Show popup for job type selection
             const estimatorDropdown = Array.from(participantDropdowns).find(dropdown => {
                 return getParticipantLabel(dropdown) === 'Estimator';
             });
@@ -454,9 +444,16 @@
                 console.log(`Set Coordinator to: ${estimatorData.jfc.text}`);
             }
 
-            if (label === 'Back Office Team' && estimatorData.backOffice) {
-                setDropdownValue(dropdown, estimatorData.backOffice.value, estimatorData.backOffice.text, true);
-                console.log(`Set Back Office Team to: ${estimatorData.backOffice.text}`);
+            // Set Back Office Team - either specific value or default to Not Applicable
+            if (label === 'Back Office Team') {
+                if (estimatorData.backOffice) {
+                    setDropdownValue(dropdown, estimatorData.backOffice.value, estimatorData.backOffice.text, true);
+                    console.log(`Set Back Office Team to: ${estimatorData.backOffice.text}`);
+                } else {
+                    // Default to Not Applicable for non-Arlington offices
+                    setDropdownValue(dropdown, '3347', 'Not, Applicable', true);
+                    console.log(`Set Back Office Team to: Not, Applicable (default)`);
+                }
             }
         });
     }
@@ -487,7 +484,6 @@
             return;
         }
 
-        // Monitor for changes to estimator selection
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
@@ -520,9 +516,6 @@
 
         console.log('Estimator monitoring setup complete');
     }
-
-    // REMOVED: checkAndUpdateMitJfcTl function is no longer needed.
-    // REMOVED: setupCoordinatorMonitor function is no longer needed.
 
     // Function to set external participant defaults
     function setExternalParticipantDefaults() {
@@ -587,9 +580,22 @@
         participantDropdowns.forEach(dropdown => {
             const participantLabel = getParticipantLabel(dropdown);
 
-            // Skip fields that are handled by estimator selection
-            if (['Estimator', 'Supervisor', 'Coordinator', 'Back Office Team'].includes(participantLabel)) {
+            // Skip fields that are handled by estimator selection (except Back Office Team which needs default)
+            if (['Estimator', 'Supervisor', 'Coordinator'].includes(participantLabel)) {
                 return;
+            }
+
+            // Always set Back Office Team from office config as default
+            if (participantLabel === 'Back Office Team' && config[participantLabel]) {
+                const setting = config[participantLabel];
+                const success = setDropdownValue(dropdown, setting.value, setting.text);
+
+                if (success) {
+                    console.log(`Set ${participantLabel} to: ${setting.text} (office default)`);
+                } else {
+                    console.error(`Failed to set ${participantLabel}`);
+                }
+                return; // Don't process other fields for Back Office Team
             }
 
             if (participantLabel && config[participantLabel]) {
@@ -643,17 +649,21 @@
 
     // Initialize when page is ready
     function initialize() {
-        console.log('SERVPRO Auto-Fill script v3.3 initialized');
+        console.log('SERVPRO Auto-Fill script v3.5 initialized');
         setupOfficeMonitor();
         setTimeout(() => setupUserChangeTracking(), 1000);
         setTimeout(() => setupEstimatorMonitor(), 1200);
-        // REMOVED: Call to setupCoordinatorMonitor is no longer needed.
         setTimeout(() => setExternalParticipantDefaults(), 500);
 
+        // Check for default office and apply configuration
         const currentOffice = document.querySelector('#ctl00_ContentPlaceHolder1_JobParentInformation_GenaralInfo_comboBoxOffice_Input');
         if (currentOffice && currentOffice.value && officeConfigs[currentOffice.value]) {
             console.log('Found default office:', currentOffice.value);
             setTimeout(() => applyOfficeConfig(currentOffice.value), 700);
+        } else {
+            // If no office is set, default to Chesterfield
+            console.log('No office detected, applying Chesterfield defaults');
+            setTimeout(() => applyOfficeConfig('SERVPRO of Chesterfield'), 700);
         }
     }
 
