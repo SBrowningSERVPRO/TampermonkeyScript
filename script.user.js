@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      3.5
+// @version      3.6
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
-// @match        https://servpro.ngsapps.net/Enterprise/Module/Job/CreateJob.aspx
+// @match        https://servpro.ngsapps.net/*
 // @updateURL    https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/main/script.user.js
 // @downloadURL  https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/main/script.user.js
 // @supportURL   https://github.com/SBrowningSERVPRO/TampermonkeyScript
@@ -16,6 +16,9 @@
 
     // Track which fields have been manually changed by the user
     const userModifiedFields = new Set();
+    
+    // Track if we're in edit mode
+    let isEditMode = false;
 
     // Estimator database with supervisor and JFC mappings
     const estimatorDatabase = {
@@ -378,7 +381,10 @@
         const config = terryThompsonConfigs[jobType];
         if (!config) return;
 
-        const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
+        const context = isEditMode ? getEditModalIframe() : document;
+        if (!context) return;
+
+        const participantDropdowns = context.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox, div[id*="Estimator"].RadComboBox');
         participantDropdowns.forEach(dropdown => {
             const label = getParticipantLabel(dropdown);
             if (label === 'Back Office Team') {
@@ -400,7 +406,7 @@
     }
 
     // Function to apply estimator-based configuration
-    function applyEstimatorConfig(estimatorValue) {
+    function applyEstimatorConfig(estimatorValue, context = document) {
         const estimatorData = estimatorDatabase[estimatorValue];
         if (!estimatorData) {
             console.log('No estimator configuration found for value:', estimatorValue);
@@ -409,7 +415,7 @@
 
         console.log('Applying estimator configuration for:', estimatorData);
 
-        const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
+        const participantDropdowns = context.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox, div[id*="Estimator"].RadComboBox');
 
         // Handle special case for Terry Thompson
         if (estimatorData.special === 'terry_thompson') {
@@ -429,6 +435,9 @@
             }
             return;
         }
+
+        // Get office configuration for this estimator's office
+        const officeConfig = officeConfigs[estimatorData.office];
 
         // Standard estimator configuration
         participantDropdowns.forEach(dropdown => {
@@ -455,10 +464,132 @@
                     console.log(`Set Back Office Team to: Not, Applicable (default)`);
                 }
             }
+
+            // Apply office-specific fields when in edit mode
+            if (isEditMode && officeConfig && label && officeConfig[label]) {
+                // Skip fields already handled
+                if (!['Estimator', 'Supervisor', 'Coordinator', 'Back Office Team'].includes(label)) {
+                    const setting = officeConfig[label];
+                    setDropdownValue(dropdown, setting.value, setting.text, true);
+                    console.log(`Set ${label} to: ${setting.text} (from office config)`);
+                }
+            }
         });
     }
 
-    // Function to setup estimator monitoring
+    // Function to get the Edit Modal iframe document
+    function getEditModalIframe() {
+        const modal = document.querySelector('#RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common');
+        if (!modal) return null;
+        
+        const iframe = modal.querySelector('iframe[name="RadWindow_Common"]');
+        if (!iframe) return null;
+        
+        try {
+            return iframe.contentDocument || iframe.contentWindow.document;
+        } catch (e) {
+            console.log('Cannot access iframe content:', e);
+            return null;
+        }
+    }
+
+    // Function to setup estimator monitoring in Edit Modal
+    function setupEditModalEstimatorMonitor(iframeDoc) {
+        console.log('Setting up edit modal estimator monitoring...');
+        isEditMode = true;
+
+        const participantDropdowns = iframeDoc.querySelectorAll('div[id*="Estimator"].RadComboBox, div[id*="EstimatorComboBox"].RadComboBox');
+        let estimatorDropdown = null;
+
+        participantDropdowns.forEach(dropdown => {
+            const label = getParticipantLabel(dropdown);
+            if (label === 'Estimator') {
+                estimatorDropdown = dropdown;
+            }
+        });
+
+        if (!estimatorDropdown) {
+            console.log('Estimator dropdown not found in edit modal');
+            return;
+        }
+
+        const estimatorInput = estimatorDropdown.querySelector('input.rcbInput');
+        const estimatorHiddenField = estimatorDropdown.querySelector('input[type="hidden"][name*="_ClientState"]');
+
+        if (!estimatorInput || !estimatorHiddenField) {
+            console.log('Estimator input elements not found in edit modal');
+            return;
+        }
+
+        // Monitor for changes to estimator selection
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+                    try {
+                        const clientState = JSON.parse(estimatorHiddenField.value);
+                        if (clientState && clientState.value) {
+                            console.log('Edit modal estimator changed:', clientState.value);
+                            applyEstimatorConfig(clientState.value, iframeDoc);
+                        }
+                    } catch (e) {
+                        console.log('Could not parse estimator client state in edit modal');
+                    }
+                }
+            });
+        });
+
+        observer.observe(estimatorHiddenField, { attributes: true, attributeFilter: ['value'] });
+
+        estimatorInput.addEventListener('change', () => {
+            setTimeout(() => {
+                try {
+                    const clientState = JSON.parse(estimatorHiddenField.value);
+                    if (clientState && clientState.value) {
+                        console.log('Edit modal estimator changed (via event):', clientState.value);
+                        applyEstimatorConfig(clientState.value, iframeDoc);
+                    }
+                } catch (e) {
+                    console.log('Could not parse estimator client state on change in edit modal');
+                }
+            }, 100);
+        });
+
+        console.log('Edit modal estimator monitoring setup complete');
+    }
+
+    // Function to monitor for Edit Job Information modal
+    function setupEditModalMonitor() {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === 1 && node.id === 'RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common') {
+                        console.log('Edit Job Information modal detected');
+                        
+                        // Wait for iframe to load
+                        setTimeout(() => {
+                            const iframeDoc = getEditModalIframe();
+                            if (iframeDoc) {
+                                console.log('Edit modal iframe loaded, setting up monitoring');
+                                setupEditModalEstimatorMonitor(iframeDoc);
+                            }
+                        }, 1000);
+                    }
+                });
+                
+                mutation.removedNodes.forEach((node) => {
+                    if (node.nodeType === 1 && node.id === 'RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common') {
+                        console.log('Edit Job Information modal closed');
+                        isEditMode = false;
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+        console.log('Edit modal monitor setup complete');
+    }
+
+    // Function to setup estimator monitoring (for Create Job page)
     function setupEstimatorMonitor() {
         console.log('Setting up estimator monitoring...');
         const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
@@ -618,7 +749,7 @@
         const officeHiddenField = document.querySelector('#ctl00_ContentPlaceHolder1_JobParentInformation_GenaralInfo_comboBoxOffice_ClientState');
 
         if (!officeDropdown || !officeHiddenField) {
-            console.error('Office dropdown elements not found');
+            console.log('Office dropdown elements not found (may not be on Create Job page)');
             return;
         }
 
@@ -647,23 +778,38 @@
         console.log('Office monitor setup complete');
     }
 
+    // Check if we're on the Create Job page
+    function isCreateJobPage() {
+        return window.location.pathname.includes('CreateJob.aspx');
+    }
+
     // Initialize when page is ready
     function initialize() {
-        console.log('SERVPRO Auto-Fill script v3.5 initialized');
-        setupOfficeMonitor();
-        setTimeout(() => setupUserChangeTracking(), 1000);
-        setTimeout(() => setupEstimatorMonitor(), 1200);
-        setTimeout(() => setExternalParticipantDefaults(), 500);
+        console.log('SERVPRO Auto-Fill script v3.6 initialized');
+        
+        // Always setup edit modal monitor
+        setupEditModalMonitor();
 
-        // Check for default office and apply configuration
-        const currentOffice = document.querySelector('#ctl00_ContentPlaceHolder1_JobParentInformation_GenaralInfo_comboBoxOffice_Input');
-        if (currentOffice && currentOffice.value && officeConfigs[currentOffice.value]) {
-            console.log('Found default office:', currentOffice.value);
-            setTimeout(() => applyOfficeConfig(currentOffice.value), 700);
+        // Only setup Create Job page features if on that page
+        if (isCreateJobPage()) {
+            console.log('On Create Job page, setting up full monitoring');
+            setupOfficeMonitor();
+            setTimeout(() => setupUserChangeTracking(), 1000);
+            setTimeout(() => setupEstimatorMonitor(), 1200);
+            setTimeout(() => setExternalParticipantDefaults(), 500);
+
+            // Check for default office and apply configuration
+            const currentOffice = document.querySelector('#ctl00_ContentPlaceHolder1_JobParentInformation_GenaralInfo_comboBoxOffice_Input');
+            if (currentOffice && currentOffice.value && officeConfigs[currentOffice.value]) {
+                console.log('Found default office:', currentOffice.value);
+                setTimeout(() => applyOfficeConfig(currentOffice.value), 700);
+            } else {
+                // If no office is set, default to Chesterfield
+                console.log('No office detected, applying Chesterfield defaults');
+                setTimeout(() => applyOfficeConfig('SERVPRO of Chesterfield'), 700);
+            }
         } else {
-            // If no office is set, default to Chesterfield
-            console.log('No office detected, applying Chesterfield defaults');
-            setTimeout(() => applyOfficeConfig('SERVPRO of Chesterfield'), 700);
+            console.log('Not on Create Job page, only monitoring for Edit Job modal');
         }
     }
 
