@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      4.0
+// @version      4.1
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -16,7 +16,7 @@
 
     // Track which fields have been manually changed by the user
     const userModifiedFields = new Set();
-    
+
     // Track if we're in edit mode
     let isEditMode = false;
 
@@ -279,6 +279,20 @@
         return labelSpan ? labelSpan.textContent.trim() : null;
     }
 
+    // Function to get current dropdown value
+    function getCurrentDropdownValue(comboBoxElement) {
+        const input = comboBoxElement.querySelector('input.rcbInput');
+        const hiddenField = comboBoxElement.querySelector('input[type="hidden"][name*="_ClientState"]');
+        if (!input || !hiddenField) return null;
+
+        try {
+            const clientState = JSON.parse(hiddenField.value);
+            return { value: clientState.value, text: clientState.text || input.value };
+        } catch (e) {
+            return { value: '', text: input.value };
+        }
+    }
+
     // Function to set dropdown value
     function setDropdownValue(comboBoxElement, value, text, forceUpdate = false) {
         const input = comboBoxElement.querySelector('input.rcbInput');
@@ -469,9 +483,26 @@
             if (isEditMode && officeConfig && label && officeConfig[label]) {
                 // Skip fields already handled
                 if (!['Estimator', 'Supervisor', 'Coordinator', 'Back Office Team'].includes(label)) {
-                    const setting = officeConfig[label];
-                    setDropdownValue(dropdown, setting.value, setting.text, true);
-                    console.log(`Set ${label} to: ${setting.text} (from office config)`);
+                    // Special handling for Marketing field
+                    if (label === 'Marketing') {
+                        const currentValue = getCurrentDropdownValue(dropdown);
+                        if (currentValue && currentValue.value &&
+                            currentValue.value !== '' &&
+                            currentValue.value !== '3347' && // Not Applicable value
+                            currentValue.text !== 'Select') {
+                            console.log(`Preserving Marketing value: ${currentValue.text}`);
+                            // Don't update this field, but continue processing other fields
+                        } else {
+                            const setting = officeConfig[label];
+                            setDropdownValue(dropdown, setting.value, setting.text, true);
+                            console.log(`Set ${label} to: ${setting.text} (from office config)`);
+                        }
+                    } else {
+                        // For all non-Marketing fields, update normally
+                        const setting = officeConfig[label];
+                        setDropdownValue(dropdown, setting.value, setting.text, true);
+                        console.log(`Set ${label} to: ${setting.text} (from office config)`);
+                    }
                 }
             }
         });
@@ -481,10 +512,10 @@
     function getEditModalIframe() {
         const modal = document.querySelector('#RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common');
         if (!modal) return null;
-        
+
         const iframe = modal.querySelector('iframe[name="RadWindow_Common"]');
         if (!iframe) return null;
-        
+
         try {
             return iframe.contentDocument || iframe.contentWindow.document;
         } catch (e) {
@@ -564,7 +595,7 @@
                 mutation.addedNodes.forEach((node) => {
                     if (node.nodeType === 1 && node.id === 'RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common') {
                         console.log('Edit Job Information modal detected');
-                        
+
                         // Wait for iframe to load
                         setTimeout(() => {
                             const iframeDoc = getEditModalIframe();
@@ -575,7 +606,7 @@
                         }, 1000);
                     }
                 });
-                
+
                 mutation.removedNodes.forEach((node) => {
                     if (node.nodeType === 1 && node.id === 'RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common') {
                         console.log('Edit Job Information modal closed');
@@ -730,13 +761,35 @@
             }
 
             if (participantLabel && config[participantLabel]) {
-                const setting = config[participantLabel];
-                const success = setDropdownValue(dropdown, setting.value, setting.text, true);
+                // Special handling for Marketing field
+                if (participantLabel === 'Marketing') {
+                    const currentValue = getCurrentDropdownValue(dropdown);
+                    if (currentValue && currentValue.value &&
+                        currentValue.value !== '' &&
+                        currentValue.value !== '3347' && // Not Applicable value
+                        currentValue.text !== 'Select') {
+                        console.log(`Preserving Marketing value: ${currentValue.text}`);
+                        // Don't update this field, but continue processing other fields
+                    } else {
+                        const setting = config[participantLabel];
+                        const success = setDropdownValue(dropdown, setting.value, setting.text, true);
 
-                if (success) {
-                    console.log(`Set ${participantLabel} to: ${setting.text}`);
+                        if (success) {
+                            console.log(`Set ${participantLabel} to: ${setting.text}`);
+                        } else {
+                            console.error(`Failed to set ${participantLabel}`);
+                        }
+                    }
                 } else {
-                    console.error(`Failed to set ${participantLabel}`);
+                    // For all non-Marketing fields, update normally
+                    const setting = config[participantLabel];
+                    const success = setDropdownValue(dropdown, setting.value, setting.text, true);
+
+                    if (success) {
+                        console.log(`Set ${participantLabel} to: ${setting.text}`);
+                    } else {
+                        console.error(`Failed to set ${participantLabel}`);
+                    }
                 }
             }
         });
@@ -785,8 +838,8 @@
 
     // Initialize when page is ready
     function initialize() {
-        console.log('SERVPRO Auto-Fill script v3.6 initialized');
-        
+        console.log('SERVPRO Auto-Fill script v4.1 initialized');
+
         // Always setup edit modal monitor
         setupEditModalMonitor();
 
