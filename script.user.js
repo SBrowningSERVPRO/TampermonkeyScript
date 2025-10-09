@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      3.6
+// @version      3.9
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
-// @author       Samuel Browning (with fixes)
+// @author       Samuel Browning
 // @match        https://servpro.ngsapps.net/*
 // @updateURL    https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/main/script.user.js
 // @downloadURL  https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/main/script.user.js
@@ -16,7 +16,7 @@
 
     // Track which fields have been manually changed by the user
     const userModifiedFields = new Set();
-    
+
     // Track if we're in edit mode
     let isEditMode = false;
 
@@ -481,10 +481,10 @@
     function getEditModalIframe() {
         const modal = document.querySelector('#RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common');
         if (!modal) return null;
-        
+
         const iframe = modal.querySelector('iframe[name="RadWindow_Common"]');
         if (!iframe) return null;
-        
+
         try {
             return iframe.contentDocument || iframe.contentWindow.document;
         } catch (e) {
@@ -562,21 +562,6 @@
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 mutation.addedNodes.forEach((node) => {
-                    if (node.nodeType === 1 && node.id === 'RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common') {
-                        console.log('Edit Job Information modal detected');
-                        
-                        // Wait for iframe to load
-                        setTimeout(() => {
-                            const iframeDoc = getEditModalIframe();
-                            if (iframeDoc) {
-                                console.log('Edit modal iframe loaded, setting up monitoring');
-                                setupEditModalEstimatorMonitor(iframeDoc);
-                            }
-                        }, 1000);
-                    }
-                });
-                
-                mutation.removedNodes.forEach((node) => {
                     if (node.nodeType === 1 && node.id === 'RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common') {
                         console.log('Edit Job Information modal closed');
                         isEditMode = false;
@@ -697,51 +682,48 @@
         });
     }
 
-    // Function to apply office configuration (for non-estimator fields)
-    function applyOfficeConfig(officeName) {
-        const config = officeConfigs[officeName];
-        if (!config) {
-            console.log('No configuration found for office:', officeName);
+// Function to apply office configuration (for non-estimator fields)
+function applyOfficeConfig(officeName) {
+    const config = officeConfigs[officeName];
+    if (!config) {
+        console.log('No configuration found for office:', officeName);
+        return;
+    }
+
+    console.log('Applying office configuration for:', officeName);
+
+    const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
+    participantDropdowns.forEach(dropdown => {
+        const participantLabel = getParticipantLabel(dropdown);
+
+        // Skip fields handled by estimator selection
+        if (['Estimator', 'Supervisor', 'Coordinator'].includes(participantLabel)) {
             return;
         }
 
-        console.log('Applying office configuration for:', officeName);
+        if (participantLabel && config[participantLabel]) {
+            const setting = config[participantLabel];
 
-        const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
-        participantDropdowns.forEach(dropdown => {
-            const participantLabel = getParticipantLabel(dropdown);
+            // For Marketing field, only set if currently empty or "Select"
+            if (participantLabel === 'Marketing') {
+                const marketingInput = dropdown.querySelector('input.rcbInput');
+                const currentValue = marketingInput ? marketingInput.value : '';
 
-            // Skip fields that are handled by estimator selection (except Back Office Team which needs default)
-            if (['Estimator', 'Supervisor', 'Coordinator'].includes(participantLabel)) {
-                return;
-            }
-
-            // Always set Back Office Team from office config as default
-            if (participantLabel === 'Back Office Team' && config[participantLabel]) {
-                const setting = config[participantLabel];
-                const success = setDropdownValue(dropdown, setting.value, setting.text);
-
-                if (success) {
-                    console.log(`Set ${participantLabel} to: ${setting.text} (office default)`);
+                if (currentValue === '' || currentValue === 'Select') {
+                    setDropdownValue(dropdown, setting.value, setting.text, true);
+                    console.log(`Set ${participantLabel} to: ${setting.text} (default)`);
                 } else {
-                    console.error(`Failed to set ${participantLabel}`);
+                    console.log(`Skipping ${participantLabel} - already has value: ${currentValue}`);
                 }
-                return; // Don't process other fields for Back Office Team
+            } else {
+                // All other fields get set normally
+                setDropdownValue(dropdown, setting.value, setting.text, true);
+                console.log(`Set ${participantLabel} to: ${setting.text}`);
             }
-
-            if (participantLabel && config[participantLabel]) {
-                const setting = config[participantLabel];
-                const success = setDropdownValue(dropdown, setting.value, setting.text, true);
-
-                if (success) {
-                    console.log(`Set ${participantLabel} to: ${setting.text}`);
-                } else {
-                    console.error(`Failed to set ${participantLabel}`);
-                }
-            }
-        });
-        setTimeout(() => setExternalParticipantDefaults(), 200);
-    }
+        }
+    });
+    setTimeout(() => setExternalParticipantDefaults(), 200);
+}
 
     // Function to monitor office dropdown changes
     function setupOfficeMonitor() {
@@ -785,8 +767,8 @@
 
     // Initialize when page is ready
     function initialize() {
-        console.log('SERVPRO Auto-Fill script v3.6 initialized');
-        
+        console.log('SERVPRO Auto-Fill script v3.9 initialized');
+
         // Always setup edit modal monitor
         setupEditModalMonitor();
 
