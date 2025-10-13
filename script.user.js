@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      5.0
-// @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
+// @version      5.1
+// @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with compensation plan support)
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
 // @updateURL    https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/main/script.user.js
@@ -415,6 +415,12 @@
         return labelSpan ? labelSpan.textContent.trim() : null;
     }
 
+    // Function to check if a dropdown is a compensation plan dropdown (should be skipped)
+    function isCompensationPlanDropdown(comboBoxElement) {
+        const id = comboBoxElement.id || '';
+        return id.includes('CompensationPlanComboBox');
+    }
+
     // Function to get current dropdown value
     function getCurrentDropdownValue(comboBoxElement) {
         const input = comboBoxElement.querySelector('input.rcbInput');
@@ -536,6 +542,9 @@
 
         const participantDropdowns = context.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox, div[id*="Estimator"].RadComboBox');
         participantDropdowns.forEach(dropdown => {
+            // Skip compensation plan dropdowns
+            if (isCompensationPlanDropdown(dropdown)) return;
+            
             const label = getParticipantLabel(dropdown);
             if (label === 'Back Office Team') {
                 setDropdownValue(dropdown, config.backOffice.value, config.backOffice.text, true);
@@ -544,6 +553,9 @@
         });
 
         participantDropdowns.forEach(dropdown => {
+            // Skip compensation plan dropdowns
+            if (isCompensationPlanDropdown(dropdown)) return;
+            
             const label = getParticipantLabel(dropdown);
             if (label === 'Coordinator') {
                 setDropdownValue(dropdown, config.jfc.value, config.jfc.text, true);
@@ -570,6 +582,9 @@
         // Handle special case for Terry Thompson
         if (estimatorData.special === 'terry_thompson') {
             participantDropdowns.forEach(dropdown => {
+                // Skip compensation plan dropdowns
+                if (isCompensationPlanDropdown(dropdown)) return;
+                
                 const label = getParticipantLabel(dropdown);
                 if (label === 'Supervisor') {
                     setDropdownValue(dropdown, estimatorData.supervisor.value, estimatorData.supervisor.text, true);
@@ -578,7 +593,7 @@
             });
 
             const estimatorDropdown = Array.from(participantDropdowns).find(dropdown => {
-                return getParticipantLabel(dropdown) === 'Estimator';
+                return !isCompensationPlanDropdown(dropdown) && getParticipantLabel(dropdown) === 'Estimator';
             });
             if (estimatorDropdown) {
                 createTerryThompsonPopup(estimatorDropdown);
@@ -591,6 +606,9 @@
 
         // Standard estimator configuration
         participantDropdowns.forEach(dropdown => {
+            // Skip compensation plan dropdowns
+            if (isCompensationPlanDropdown(dropdown)) return;
+            
             const label = getParticipantLabel(dropdown);
 
             if (label === 'Supervisor' && estimatorData.supervisor) {
@@ -669,6 +687,9 @@
         let estimatorDropdown = null;
 
         participantDropdowns.forEach(dropdown => {
+            // Skip compensation plan dropdowns
+            if (isCompensationPlanDropdown(dropdown)) return;
+            
             const label = getParticipantLabel(dropdown);
             if (label === 'Estimator') {
                 estimatorDropdown = dropdown;
@@ -763,6 +784,9 @@
         let estimatorDropdown = null;
 
         participantDropdowns.forEach(dropdown => {
+            // Skip compensation plan dropdowns
+            if (isCompensationPlanDropdown(dropdown)) return;
+            
             const label = getParticipantLabel(dropdown);
             if (label === 'Estimator') {
                 estimatorDropdown = dropdown;
@@ -845,6 +869,10 @@
         console.log('Setting up user change tracking...');
         const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox input.rcbInput');
         participantDropdowns.forEach(input => {
+            // Skip inputs in compensation plan dropdowns
+            const dropdown = input.closest('.RadComboBox');
+            if (dropdown && isCompensationPlanDropdown(dropdown)) return;
+            
             input.addEventListener('change', (e) => {
                 const fieldId = e.target.id || e.target.name;
                 userModifiedFields.add(fieldId);
@@ -876,6 +904,9 @@
 
         const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
         participantDropdowns.forEach(dropdown => {
+            // Skip compensation plan dropdowns
+            if (isCompensationPlanDropdown(dropdown)) return;
+            
             const participantLabel = getParticipantLabel(dropdown);
 
             // Skip fields that are handled by estimator selection (except Back Office Team which needs default)
@@ -974,7 +1005,7 @@
 
     // Initialize when page is ready
     function initialize() {
-        console.log('SERVPRO Auto-Fill script v5 initialized');
+        console.log('SERVPRO Auto-Fill script v5.1 initialized (with compensation plan support)');
 
         // Always setup edit modal monitor
         setupEditModalMonitor();
