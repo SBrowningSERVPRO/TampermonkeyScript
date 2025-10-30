@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      5.1
+// @version      5.2
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with compensation plan support)
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -279,6 +279,12 @@
             office: 'SERVPRO of Arlington',
             backOffice: { value: '179363', text: 'Team, Water' }
         },
+        '214587': { // Hill, Anijza
+            supervisor: { value: '177988', text: 'Arlington, Team' },
+            jfc: { value: '177870', text: 'Riaz, Saud' },
+            office: 'SERVPRO of Arlington',
+            backOffice: { value: '179362', text: 'Team, Contents - Arlington' }
+        },
         '177900': { // Thompson, Terry - Special case
             supervisor: { value: '177988', text: 'Arlington, Team' },
             office: 'SERVPRO of Arlington',
@@ -544,7 +550,7 @@
         participantDropdowns.forEach(dropdown => {
             // Skip compensation plan dropdowns
             if (isCompensationPlanDropdown(dropdown)) return;
-            
+
             const label = getParticipantLabel(dropdown);
             if (label === 'Back Office Team') {
                 setDropdownValue(dropdown, config.backOffice.value, config.backOffice.text, true);
@@ -555,7 +561,7 @@
         participantDropdowns.forEach(dropdown => {
             // Skip compensation plan dropdowns
             if (isCompensationPlanDropdown(dropdown)) return;
-            
+
             const label = getParticipantLabel(dropdown);
             if (label === 'Coordinator') {
                 setDropdownValue(dropdown, config.jfc.value, config.jfc.text, true);
@@ -584,7 +590,7 @@
             participantDropdowns.forEach(dropdown => {
                 // Skip compensation plan dropdowns
                 if (isCompensationPlanDropdown(dropdown)) return;
-                
+
                 const label = getParticipantLabel(dropdown);
                 if (label === 'Supervisor') {
                     setDropdownValue(dropdown, estimatorData.supervisor.value, estimatorData.supervisor.text, true);
@@ -608,7 +614,7 @@
         participantDropdowns.forEach(dropdown => {
             // Skip compensation plan dropdowns
             if (isCompensationPlanDropdown(dropdown)) return;
-            
+
             const label = getParticipantLabel(dropdown);
 
             if (label === 'Supervisor' && estimatorData.supervisor) {
@@ -689,7 +695,7 @@
         participantDropdowns.forEach(dropdown => {
             // Skip compensation plan dropdowns
             if (isCompensationPlanDropdown(dropdown)) return;
-            
+
             const label = getParticipantLabel(dropdown);
             if (label === 'Estimator') {
                 estimatorDropdown = dropdown;
@@ -751,16 +757,55 @@
             mutations.forEach((mutation) => {
                 mutation.addedNodes.forEach((node) => {
                     if (node.nodeType === 1 && node.id === 'RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common') {
-                        console.log('Edit Job Information modal detected');
+                        console.log('Edit Job Information modal detected. Waiting for iframe to be ready...');
 
-                        // Wait for iframe to load
-                        setTimeout(() => {
-                            const iframeDoc = getEditModalIframe();
-                            if (iframeDoc) {
-                                console.log('Edit modal iframe loaded, setting up monitoring');
-                                setupEditModalEstimatorMonitor(iframeDoc);
+                        const iframeName = "RadWindow_Common";
+                        let attempts = 0;
+                        const maxAttempts = 20; // Try for 10 seconds (20 * 500ms)
+                        const retryInterval = 500; // 500ms
+
+                        function trySetupModal() {
+                            const modal = document.querySelector('#RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common');
+                            if (!modal) {
+                                console.log('Modal disappeared, stopping setup.');
+                                return; // Modal closed before setup finished
                             }
-                        }, 1000);
+
+                            const iframe = modal.querySelector(`iframe[name="${iframeName}"]`);
+                            if (iframe) {
+                                try {
+                                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                                    // Check if document is loaded and has content
+                                    if (iframeDoc && iframeDoc.readyState === 'complete' && iframeDoc.body && iframeDoc.body.children.length > 0) {
+                                        console.log('Edit modal iframe is ready, setting up monitoring.');
+                                        setupEditModalEstimatorMonitor(iframeDoc);
+                                    } else {
+                                        // Iframe found, but not ready
+                                        throw new Error('Iframe not ready');
+                                    }
+                                } catch (e) {
+                                    // Iframe found but content not accessible (e.g., still loading)
+                                    attempts++;
+                                    if (attempts < maxAttempts) {
+                                        console.log(`Iframe not ready, retrying... (Attempt ${attempts}/${maxAttempts})`);
+                                        setTimeout(trySetupModal, retryInterval);
+                                    } else {
+                                        console.error(`Failed to access edit modal iframe content after ${maxAttempts * retryInterval}ms.`);
+                                    }
+                                }
+                            } else {
+                                // Iframe not even in the DOM yet
+                                attempts++;
+                                if (attempts < maxAttempts) {
+                                    console.log(`Iframe not found, retrying... (Attempt ${attempts}/${maxAttempts})`);
+                                    setTimeout(trySetupModal, retryInterval);
+                                } else {
+                                    console.error(`Failed to find edit modal iframe after ${maxAttempts * retryInterval}ms.`);
+                                }
+                            }
+                        }
+                        // Start the process
+                        setTimeout(trySetupModal, 250); // Give the iframe a moment to be added to the DOM
                     }
                 });
 
@@ -786,7 +831,7 @@
         participantDropdowns.forEach(dropdown => {
             // Skip compensation plan dropdowns
             if (isCompensationPlanDropdown(dropdown)) return;
-            
+
             const label = getParticipantLabel(dropdown);
             if (label === 'Estimator') {
                 estimatorDropdown = dropdown;
@@ -872,7 +917,7 @@
             // Skip inputs in compensation plan dropdowns
             const dropdown = input.closest('.RadComboBox');
             if (dropdown && isCompensationPlanDropdown(dropdown)) return;
-            
+
             input.addEventListener('change', (e) => {
                 const fieldId = e.target.id || e.target.name;
                 userModifiedFields.add(fieldId);
@@ -906,7 +951,7 @@
         participantDropdowns.forEach(dropdown => {
             // Skip compensation plan dropdowns
             if (isCompensationPlanDropdown(dropdown)) return;
-            
+
             const participantLabel = getParticipantLabel(dropdown);
 
             // Skip fields that are handled by estimator selection (except Back Office Team which needs default)
@@ -1005,7 +1050,7 @@
 
     // Initialize when page is ready
     function initialize() {
-        console.log('SERVPRO Auto-Fill script v5.1 initialized (with compensation plan support)');
+        console.log('SERVPRO Auto-Fill script v5.2 initialized (with compensation plan support)');
 
         // Always setup edit modal monitor
         setupEditModalMonitor();
