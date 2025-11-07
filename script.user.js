@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      5.2
+// @version      5.3
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with compensation plan support)
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -343,7 +343,7 @@
     // Base office configurations (for fields not handled by estimator selection)
     const officeConfigs = {
         'SERVPRO of Chesterfield': {
-            'Foreman': { value: '3347', text: 'Not, Applicable' },
+            'Foreperson': { value: '3347', text: 'Not, Applicable' },
             'Accounting': { value: '95680', text: 'Davis, Margaret' },
             'Marketing': { value: '3347', text: 'Not, Applicable' },
             'Recon PM': { value: '3347', text: 'Not, Applicable' },
@@ -363,7 +363,7 @@
             'Mit JFC TL': { value: '66515', text: 'Burgess, Cristine' }
         },
         'SERVPRO of Chesapeake': {
-            'Foreman': { value: '3347', text: 'Not, Applicable' },
+            'Foreperson': { value: '3347', text: 'Not, Applicable' },
             'Accounting': { value: '140311', text: 'Shippee, Kathryn' },
             'Marketing': { value: '3347', text: 'Not, Applicable' },
             'Recon PM': { value: '3347', text: 'Not, Applicable' },
@@ -383,7 +383,7 @@
             'Mit JFC TL': { value: '66515', text: 'Burgess, Cristine' }
         },
         'SERVPRO of Arlington': {
-            'Foreman': { value: '3347', text: 'Not, Applicable' },
+            'Foreperson': { value: '3347', text: 'Not, Applicable' },
             'Accounting': { value: '177881', text: 'Matta, Sreelakshmi' },
             'Marketing': { value: '3347', text: 'Not, Applicable' },
             'Recon PM': { value: '3347', text: 'Not, Applicable' },
