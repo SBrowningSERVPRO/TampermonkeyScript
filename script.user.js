@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      5.3
-// @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with compensation plan support)
+// @version      5.4
+// @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with improved detection)
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
 // @updateURL    https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/main/script.user.js
@@ -441,11 +441,52 @@
         }
     }
 
-    // Function to set dropdown value
-    function setDropdownValue(comboBoxElement, value, text, forceUpdate = false) {
+    // Function to check if dropdown is ready for updates
+    function isDropdownReady(comboBoxElement) {
         const input = comboBoxElement.querySelector('input.rcbInput');
         const hiddenField = comboBoxElement.querySelector('input[type="hidden"][name*="_ClientState"]');
+        
         if (!input || !hiddenField) return false;
+        
+        // Check if the dropdown is visible and enabled
+        if (input.disabled || input.readOnly) return false;
+        
+        // Check if it has a parent that's visible
+        const isVisible = comboBoxElement.offsetParent !== null;
+        return isVisible;
+    }
+
+    // Function to set dropdown value with retry logic
+    function setDropdownValue(comboBoxElement, value, text, forceUpdate = false, retryCount = 0) {
+        const maxRetries = 3;
+        const retryDelay = 300;
+
+        const input = comboBoxElement.querySelector('input.rcbInput');
+        const hiddenField = comboBoxElement.querySelector('input[type="hidden"][name*="_ClientState"]');
+        
+        if (!input || !hiddenField) {
+            if (retryCount < maxRetries) {
+                console.log(`Dropdown elements not found, retrying... (${retryCount + 1}/${maxRetries})`);
+                setTimeout(() => {
+                    setDropdownValue(comboBoxElement, value, text, forceUpdate, retryCount + 1);
+                }, retryDelay);
+                return false;
+            }
+            console.error('Failed to find dropdown elements after retries');
+            return false;
+        }
+
+        // Check if dropdown is ready
+        if (!isDropdownReady(comboBoxElement)) {
+            if (retryCount < maxRetries) {
+                console.log(`Dropdown not ready, retrying... (${retryCount + 1}/${maxRetries})`);
+                setTimeout(() => {
+                    setDropdownValue(comboBoxElement, value, text, forceUpdate, retryCount + 1);
+                }, retryDelay);
+                return false;
+            }
+            console.warn('Dropdown not ready after retries, attempting update anyway');
+        }
 
         const fieldId = input.id || input.name;
         if (!forceUpdate && userModifiedFields.has(fieldId)) {
@@ -482,7 +523,45 @@
 
         input.dispatchEvent(new Event('change', { bubbles: true }));
         hiddenField.dispatchEvent(new Event('change', { bubbles: true }));
+        
+        console.log(`✓ Successfully set ${fieldId} to: ${text}`);
         return true;
+    }
+
+    // Function to wait for dropdowns to be ready
+    function waitForDropdownsReady(context, callback, timeout = 5000) {
+        const startTime = Date.now();
+        
+        function checkReady() {
+            const dropdowns = context.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox, div[id*="Estimator"].RadComboBox');
+            
+            if (dropdowns.length === 0) {
+                if (Date.now() - startTime < timeout) {
+                    setTimeout(checkReady, 200);
+                    return;
+                }
+                console.warn('No dropdowns found after timeout');
+                callback();
+                return;
+            }
+            
+            // Check if at least some dropdowns are ready
+            let readyCount = 0;
+            dropdowns.forEach(dropdown => {
+                if (!isCompensationPlanDropdown(dropdown) && isDropdownReady(dropdown)) {
+                    readyCount++;
+                }
+            });
+            
+            if (readyCount > 0 || Date.now() - startTime >= timeout) {
+                console.log(`Found ${readyCount} ready dropdowns, proceeding...`);
+                callback();
+            } else {
+                setTimeout(checkReady, 200);
+            }
+        }
+        
+        checkReady();
     }
 
     // Function to create Terry Thompson job type popup
@@ -547,27 +626,28 @@
         if (!context) return;
 
         const participantDropdowns = context.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox, div[id*="Estimator"].RadComboBox');
+        
+        // Set Back Office Team first
         participantDropdowns.forEach(dropdown => {
-            // Skip compensation plan dropdowns
             if (isCompensationPlanDropdown(dropdown)) return;
 
             const label = getParticipantLabel(dropdown);
             if (label === 'Back Office Team') {
                 setDropdownValue(dropdown, config.backOffice.value, config.backOffice.text, true);
-                console.log(`Set Back Office Team to: ${config.backOffice.text}`);
             }
         });
 
-        participantDropdowns.forEach(dropdown => {
-            // Skip compensation plan dropdowns
-            if (isCompensationPlanDropdown(dropdown)) return;
+        // Then set Coordinator with a slight delay
+        setTimeout(() => {
+            participantDropdowns.forEach(dropdown => {
+                if (isCompensationPlanDropdown(dropdown)) return;
 
-            const label = getParticipantLabel(dropdown);
-            if (label === 'Coordinator') {
-                setDropdownValue(dropdown, config.jfc.value, config.jfc.text, true);
-                console.log(`Set Coordinator to: ${config.jfc.text}`);
-            }
-        });
+                const label = getParticipantLabel(dropdown);
+                if (label === 'Coordinator') {
+                    setDropdownValue(dropdown, config.jfc.value, config.jfc.text, true);
+                }
+            });
+        }, 100);
 
         popup.remove();
         console.log(`Applied Terry Thompson ${jobType} configuration`);
@@ -583,87 +663,94 @@
 
         console.log('Applying estimator configuration for:', estimatorData);
 
-        const participantDropdowns = context.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox, div[id*="Estimator"].RadComboBox');
+        waitForDropdownsReady(context, () => {
+            const participantDropdowns = context.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox, div[id*="Estimator"].RadComboBox');
 
-        // Handle special case for Terry Thompson
-        if (estimatorData.special === 'terry_thompson') {
-            participantDropdowns.forEach(dropdown => {
-                // Skip compensation plan dropdowns
-                if (isCompensationPlanDropdown(dropdown)) return;
+            // Handle special case for Terry Thompson
+            if (estimatorData.special === 'terry_thompson') {
+                participantDropdowns.forEach(dropdown => {
+                    if (isCompensationPlanDropdown(dropdown)) return;
 
-                const label = getParticipantLabel(dropdown);
-                if (label === 'Supervisor') {
-                    setDropdownValue(dropdown, estimatorData.supervisor.value, estimatorData.supervisor.text, true);
-                    console.log(`Set Supervisor to: ${estimatorData.supervisor.text}`);
-                }
-            });
-
-            const estimatorDropdown = Array.from(participantDropdowns).find(dropdown => {
-                return !isCompensationPlanDropdown(dropdown) && getParticipantLabel(dropdown) === 'Estimator';
-            });
-            if (estimatorDropdown) {
-                createTerryThompsonPopup(estimatorDropdown);
-            }
-            return;
-        }
-
-        // Get office configuration for this estimator's office
-        const officeConfig = officeConfigs[estimatorData.office];
-
-        // Standard estimator configuration
-        participantDropdowns.forEach(dropdown => {
-            // Skip compensation plan dropdowns
-            if (isCompensationPlanDropdown(dropdown)) return;
-
-            const label = getParticipantLabel(dropdown);
-
-            if (label === 'Supervisor' && estimatorData.supervisor) {
-                setDropdownValue(dropdown, estimatorData.supervisor.value, estimatorData.supervisor.text, true);
-                console.log(`Set Supervisor to: ${estimatorData.supervisor.text}`);
-            }
-
-            if (label === 'Coordinator' && estimatorData.jfc) {
-                setDropdownValue(dropdown, estimatorData.jfc.value, estimatorData.jfc.text, true);
-                console.log(`Set Coordinator to: ${estimatorData.jfc.text}`);
-            }
-
-            // Set Back Office Team - either specific value or default to Not Applicable
-            if (label === 'Back Office Team') {
-                if (estimatorData.backOffice) {
-                    setDropdownValue(dropdown, estimatorData.backOffice.value, estimatorData.backOffice.text, true);
-                    console.log(`Set Back Office Team to: ${estimatorData.backOffice.text}`);
-                } else {
-                    // Default to Not Applicable for non-Arlington offices
-                    setDropdownValue(dropdown, '3347', 'Not, Applicable', true);
-                    console.log(`Set Back Office Team to: Not, Applicable (default)`);
-                }
-            }
-
-            // Apply office-specific fields when in edit mode
-            if (isEditMode && officeConfig && label && officeConfig[label]) {
-                // Skip fields already handled
-                if (!['Estimator', 'Supervisor', 'Coordinator', 'Back Office Team'].includes(label)) {
-                    // Special handling for Marketing field
-                    if (label === 'Marketing') {
-                        const currentValue = getCurrentDropdownValue(dropdown);
-                        if (currentValue && currentValue.value &&
-                            currentValue.value !== '' &&
-                            currentValue.value !== '3347' && // Not Applicable value
-                            currentValue.text !== 'Select') {
-                            console.log(`Preserving Marketing value: ${currentValue.text}`);
-                            // Don't update this field, but continue processing other fields
-                        } else {
-                            const setting = officeConfig[label];
-                            setDropdownValue(dropdown, setting.value, setting.text, true);
-                            console.log(`Set ${label} to: ${setting.text} (from office config)`);
-                        }
-                    } else {
-                        // For all non-Marketing fields, update normally
-                        const setting = officeConfig[label];
-                        setDropdownValue(dropdown, setting.value, setting.text, true);
-                        console.log(`Set ${label} to: ${setting.text} (from office config)`);
+                    const label = getParticipantLabel(dropdown);
+                    if (label === 'Supervisor') {
+                        setDropdownValue(dropdown, estimatorData.supervisor.value, estimatorData.supervisor.text, true);
                     }
+                });
+
+                const estimatorDropdown = Array.from(participantDropdowns).find(dropdown => {
+                    return !isCompensationPlanDropdown(dropdown) && getParticipantLabel(dropdown) === 'Estimator';
+                });
+                if (estimatorDropdown) {
+                    createTerryThompsonPopup(estimatorDropdown);
                 }
+                return;
+            }
+
+            // Get office configuration for this estimator's office
+            const officeConfig = officeConfigs[estimatorData.office];
+
+            // Apply in stages with delays to ensure proper rendering
+            // Stage 1: Supervisor
+            participantDropdowns.forEach(dropdown => {
+                if (isCompensationPlanDropdown(dropdown)) return;
+                const label = getParticipantLabel(dropdown);
+                
+                if (label === 'Supervisor' && estimatorData.supervisor) {
+                    setDropdownValue(dropdown, estimatorData.supervisor.value, estimatorData.supervisor.text, true);
+                }
+            });
+
+            // Stage 2: Coordinator (with delay)
+            setTimeout(() => {
+                participantDropdowns.forEach(dropdown => {
+                    if (isCompensationPlanDropdown(dropdown)) return;
+                    const label = getParticipantLabel(dropdown);
+                    
+                    if (label === 'Coordinator' && estimatorData.jfc) {
+                        setDropdownValue(dropdown, estimatorData.jfc.value, estimatorData.jfc.text, true);
+                    }
+                });
+            }, 150);
+
+            // Stage 3: Back Office Team (with delay)
+            setTimeout(() => {
+                participantDropdowns.forEach(dropdown => {
+                    if (isCompensationPlanDropdown(dropdown)) return;
+                    const label = getParticipantLabel(dropdown);
+                    
+                    if (label === 'Back Office Team') {
+                        if (estimatorData.backOffice) {
+                            setDropdownValue(dropdown, estimatorData.backOffice.value, estimatorData.backOffice.text, true);
+                        } else {
+                            setDropdownValue(dropdown, '3347', 'Not, Applicable', true);
+                        }
+                    }
+                });
+            }, 300);
+
+            // Stage 4: Office-specific fields in edit mode (with delay)
+            if (isEditMode && officeConfig) {
+                setTimeout(() => {
+                    participantDropdowns.forEach(dropdown => {
+                        if (isCompensationPlanDropdown(dropdown)) return;
+                        const label = getParticipantLabel(dropdown);
+                        
+                        if (label && officeConfig[label] && !['Estimator', 'Supervisor', 'Coordinator', 'Back Office Team'].includes(label)) {
+                            if (label === 'Marketing') {
+                                const currentValue = getCurrentDropdownValue(dropdown);
+                                if (currentValue && currentValue.value && currentValue.value !== '' && currentValue.value !== '3347' && currentValue.text !== 'Select') {
+                                    console.log(`Preserving Marketing value: ${currentValue.text}`);
+                                } else {
+                                    const setting = officeConfig[label];
+                                    setDropdownValue(dropdown, setting.value, setting.text, true);
+                                }
+                            } else {
+                                const setting = officeConfig[label];
+                                setDropdownValue(dropdown, setting.value, setting.text, true);
+                            }
+                        }
+                    });
+                }, 450);
             }
         });
     }
@@ -689,66 +776,70 @@
         console.log('Setting up edit modal estimator monitoring...');
         isEditMode = true;
 
-        const participantDropdowns = iframeDoc.querySelectorAll('div[id*="Estimator"].RadComboBox, div[id*="EstimatorComboBox"].RadComboBox');
-        let estimatorDropdown = null;
+        // Wait for dropdowns to be fully loaded
+        waitForDropdownsReady(iframeDoc, () => {
+            const participantDropdowns = iframeDoc.querySelectorAll('div[id*="Estimator"].RadComboBox, div[id*="EstimatorComboBox"].RadComboBox');
+            let estimatorDropdown = null;
 
-        participantDropdowns.forEach(dropdown => {
-            // Skip compensation plan dropdowns
-            if (isCompensationPlanDropdown(dropdown)) return;
+            participantDropdowns.forEach(dropdown => {
+                if (isCompensationPlanDropdown(dropdown)) return;
 
-            const label = getParticipantLabel(dropdown);
-            if (label === 'Estimator') {
-                estimatorDropdown = dropdown;
+                const label = getParticipantLabel(dropdown);
+                if (label === 'Estimator') {
+                    estimatorDropdown = dropdown;
+                }
+            });
+
+            if (!estimatorDropdown) {
+                console.log('Estimator dropdown not found in edit modal');
+                return;
             }
-        });
 
-        if (!estimatorDropdown) {
-            console.log('Estimator dropdown not found in edit modal');
-            return;
-        }
+            const estimatorInput = estimatorDropdown.querySelector('input.rcbInput');
+            const estimatorHiddenField = estimatorDropdown.querySelector('input[type="hidden"][name*="_ClientState"]');
 
-        const estimatorInput = estimatorDropdown.querySelector('input.rcbInput');
-        const estimatorHiddenField = estimatorDropdown.querySelector('input[type="hidden"][name*="_ClientState"]');
+            if (!estimatorInput || !estimatorHiddenField) {
+                console.log('Estimator input elements not found in edit modal');
+                return;
+            }
 
-        if (!estimatorInput || !estimatorHiddenField) {
-            console.log('Estimator input elements not found in edit modal');
-            return;
-        }
+            // Monitor for changes to estimator selection
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+                        try {
+                            const clientState = JSON.parse(estimatorHiddenField.value);
+                            if (clientState && clientState.value) {
+                                console.log('Edit modal estimator changed:', clientState.value);
+                                setTimeout(() => {
+                                    applyEstimatorConfig(clientState.value, iframeDoc);
+                                }, 200);
+                            }
+                        } catch (e) {
+                            console.log('Could not parse estimator client state in edit modal');
+                        }
+                    }
+                });
+            });
 
-        // Monitor for changes to estimator selection
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+            observer.observe(estimatorHiddenField, { attributes: true, attributeFilter: ['value'] });
+
+            estimatorInput.addEventListener('change', () => {
+                setTimeout(() => {
                     try {
                         const clientState = JSON.parse(estimatorHiddenField.value);
                         if (clientState && clientState.value) {
-                            console.log('Edit modal estimator changed:', clientState.value);
+                            console.log('Edit modal estimator changed (via event):', clientState.value);
                             applyEstimatorConfig(clientState.value, iframeDoc);
                         }
                     } catch (e) {
-                        console.log('Could not parse estimator client state in edit modal');
+                        console.log('Could not parse estimator client state on change in edit modal');
                     }
-                }
+                }, 200);
             });
+
+            console.log('Edit modal estimator monitoring setup complete');
         });
-
-        observer.observe(estimatorHiddenField, { attributes: true, attributeFilter: ['value'] });
-
-        estimatorInput.addEventListener('change', () => {
-            setTimeout(() => {
-                try {
-                    const clientState = JSON.parse(estimatorHiddenField.value);
-                    if (clientState && clientState.value) {
-                        console.log('Edit modal estimator changed (via event):', clientState.value);
-                        applyEstimatorConfig(clientState.value, iframeDoc);
-                    }
-                } catch (e) {
-                    console.log('Could not parse estimator client state on change in edit modal');
-                }
-            }, 100);
-        });
-
-        console.log('Edit modal estimator monitoring setup complete');
     }
 
     // Function to monitor for Edit Job Information modal
@@ -761,30 +852,30 @@
 
                         const iframeName = "RadWindow_Common";
                         let attempts = 0;
-                        const maxAttempts = 20; // Try for 10 seconds (20 * 500ms)
-                        const retryInterval = 500; // 500ms
+                        const maxAttempts = 30; // Increased to 15 seconds
+                        const retryInterval = 500;
 
                         function trySetupModal() {
                             const modal = document.querySelector('#RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common');
                             if (!modal) {
                                 console.log('Modal disappeared, stopping setup.');
-                                return; // Modal closed before setup finished
+                                return;
                             }
 
                             const iframe = modal.querySelector(`iframe[name="${iframeName}"]`);
                             if (iframe) {
                                 try {
                                     const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                                    // Check if document is loaded and has content
                                     if (iframeDoc && iframeDoc.readyState === 'complete' && iframeDoc.body && iframeDoc.body.children.length > 0) {
                                         console.log('Edit modal iframe is ready, setting up monitoring.');
-                                        setupEditModalEstimatorMonitor(iframeDoc);
+                                        // Add extra delay to ensure all scripts have initialized
+                                        setTimeout(() => {
+                                            setupEditModalEstimatorMonitor(iframeDoc);
+                                        }, 500);
                                     } else {
-                                        // Iframe found, but not ready
                                         throw new Error('Iframe not ready');
                                     }
                                 } catch (e) {
-                                    // Iframe found but content not accessible (e.g., still loading)
                                     attempts++;
                                     if (attempts < maxAttempts) {
                                         console.log(`Iframe not ready, retrying... (Attempt ${attempts}/${maxAttempts})`);
@@ -794,7 +885,6 @@
                                     }
                                 }
                             } else {
-                                // Iframe not even in the DOM yet
                                 attempts++;
                                 if (attempts < maxAttempts) {
                                     console.log(`Iframe not found, retrying... (Attempt ${attempts}/${maxAttempts})`);
@@ -804,8 +894,7 @@
                                 }
                             }
                         }
-                        // Start the process
-                        setTimeout(trySetupModal, 250); // Give the iframe a moment to be added to the DOM
+                        setTimeout(trySetupModal, 250);
                     }
                 });
 
@@ -825,63 +914,67 @@
     // Function to setup estimator monitoring (for Create Job page)
     function setupEstimatorMonitor() {
         console.log('Setting up estimator monitoring...');
-        const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
-        let estimatorDropdown = null;
+        
+        waitForDropdownsReady(document, () => {
+            const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
+            let estimatorDropdown = null;
 
-        participantDropdowns.forEach(dropdown => {
-            // Skip compensation plan dropdowns
-            if (isCompensationPlanDropdown(dropdown)) return;
+            participantDropdowns.forEach(dropdown => {
+                if (isCompensationPlanDropdown(dropdown)) return;
 
-            const label = getParticipantLabel(dropdown);
-            if (label === 'Estimator') {
-                estimatorDropdown = dropdown;
+                const label = getParticipantLabel(dropdown);
+                if (label === 'Estimator') {
+                    estimatorDropdown = dropdown;
+                }
+            });
+
+            if (!estimatorDropdown) {
+                console.log('Estimator dropdown not found');
+                return;
             }
-        });
 
-        if (!estimatorDropdown) {
-            console.log('Estimator dropdown not found');
-            return;
-        }
+            const estimatorInput = estimatorDropdown.querySelector('input.rcbInput');
+            const estimatorHiddenField = estimatorDropdown.querySelector('input[type="hidden"][name*="_ClientState"]');
 
-        const estimatorInput = estimatorDropdown.querySelector('input.rcbInput');
-        const estimatorHiddenField = estimatorDropdown.querySelector('input[type="hidden"][name*="_ClientState"]');
+            if (!estimatorInput || !estimatorHiddenField) {
+                console.log('Estimator input elements not found');
+                return;
+            }
 
-        if (!estimatorInput || !estimatorHiddenField) {
-            console.log('Estimator input elements not found');
-            return;
-        }
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+                        try {
+                            const clientState = JSON.parse(estimatorHiddenField.value);
+                            if (clientState && clientState.value) {
+                                setTimeout(() => {
+                                    applyEstimatorConfig(clientState.value);
+                                }, 200);
+                            }
+                        } catch (e) {
+                            console.log('Could not parse estimator client state');
+                        }
+                    }
+                });
+            });
 
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+            observer.observe(estimatorHiddenField, { attributes: true, attributeFilter: ['value'] });
+
+            estimatorInput.addEventListener('change', () => {
+                setTimeout(() => {
                     try {
                         const clientState = JSON.parse(estimatorHiddenField.value);
                         if (clientState && clientState.value) {
                             applyEstimatorConfig(clientState.value);
                         }
                     } catch (e) {
-                        console.log('Could not parse estimator client state');
+                        console.log('Could not parse estimator client state on change');
                     }
-                }
+                }, 200);
             });
+
+            console.log('Estimator monitoring setup complete');
         });
-
-        observer.observe(estimatorHiddenField, { attributes: true, attributeFilter: ['value'] });
-
-        estimatorInput.addEventListener('change', () => {
-            setTimeout(() => {
-                try {
-                    const clientState = JSON.parse(estimatorHiddenField.value);
-                    if (clientState && clientState.value) {
-                        applyEstimatorConfig(clientState.value);
-                    }
-                } catch (e) {
-                    console.log('Could not parse estimator client state on change');
-                }
-            }, 100);
-        });
-
-        console.log('Estimator monitoring setup complete');
     }
 
     // Function to set external participant defaults
@@ -914,7 +1007,6 @@
         console.log('Setting up user change tracking...');
         const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox input.rcbInput');
         participantDropdowns.forEach(input => {
-            // Skip inputs in compensation plan dropdowns
             const dropdown = input.closest('.RadComboBox');
             if (dropdown && isCompensationPlanDropdown(dropdown)) return;
 
@@ -947,41 +1039,44 @@
 
         console.log('Applying office configuration for:', officeName);
 
-        const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
-        participantDropdowns.forEach(dropdown => {
-            // Skip compensation plan dropdowns
-            if (isCompensationPlanDropdown(dropdown)) return;
+        waitForDropdownsReady(document, () => {
+            const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
+            participantDropdowns.forEach(dropdown => {
+                if (isCompensationPlanDropdown(dropdown)) return;
 
-            const participantLabel = getParticipantLabel(dropdown);
+                const participantLabel = getParticipantLabel(dropdown);
 
-            // Skip fields that are handled by estimator selection (except Back Office Team which needs default)
-            if (['Estimator', 'Supervisor', 'Coordinator'].includes(participantLabel)) {
-                return;
-            }
-
-            // Always set Back Office Team from office config as default
-            if (participantLabel === 'Back Office Team' && config[participantLabel]) {
-                const setting = config[participantLabel];
-                const success = setDropdownValue(dropdown, setting.value, setting.text);
-
-                if (success) {
-                    console.log(`Set ${participantLabel} to: ${setting.text} (office default)`);
-                } else {
-                    console.error(`Failed to set ${participantLabel}`);
+                if (['Estimator', 'Supervisor', 'Coordinator'].includes(participantLabel)) {
+                    return;
                 }
-                return; // Don't process other fields for Back Office Team
-            }
 
-            if (participantLabel && config[participantLabel]) {
-                // Special handling for Marketing field
-                if (participantLabel === 'Marketing') {
-                    const currentValue = getCurrentDropdownValue(dropdown);
-                    if (currentValue && currentValue.value &&
-                        currentValue.value !== '' &&
-                        currentValue.value !== '3347' && // Not Applicable value
-                        currentValue.text !== 'Select') {
-                        console.log(`Preserving Marketing value: ${currentValue.text}`);
-                        // Don't update this field, but continue processing other fields
+                if (participantLabel === 'Back Office Team' && config[participantLabel]) {
+                    const setting = config[participantLabel];
+                    const success = setDropdownValue(dropdown, setting.value, setting.text);
+
+                    if (success) {
+                        console.log(`Set ${participantLabel} to: ${setting.text} (office default)`);
+                    } else {
+                        console.error(`Failed to set ${participantLabel}`);
+                    }
+                    return;
+                }
+
+                if (participantLabel && config[participantLabel]) {
+                    if (participantLabel === 'Marketing') {
+                        const currentValue = getCurrentDropdownValue(dropdown);
+                        if (currentValue && currentValue.value && currentValue.value !== '' && currentValue.value !== '3347' && currentValue.text !== 'Select') {
+                            console.log(`Preserving Marketing value: ${currentValue.text}`);
+                        } else {
+                            const setting = config[participantLabel];
+                            const success = setDropdownValue(dropdown, setting.value, setting.text, true);
+
+                            if (success) {
+                                console.log(`Set ${participantLabel} to: ${setting.text}`);
+                            } else {
+                                console.error(`Failed to set ${participantLabel}`);
+                            }
+                        }
                     } else {
                         const setting = config[participantLabel];
                         const success = setDropdownValue(dropdown, setting.value, setting.text, true);
@@ -992,20 +1087,10 @@
                             console.error(`Failed to set ${participantLabel}`);
                         }
                     }
-                } else {
-                    // For all non-Marketing fields, update normally
-                    const setting = config[participantLabel];
-                    const success = setDropdownValue(dropdown, setting.value, setting.text, true);
-
-                    if (success) {
-                        console.log(`Set ${participantLabel} to: ${setting.text}`);
-                    } else {
-                        console.error(`Failed to set ${participantLabel}`);
-                    }
                 }
-            }
+            });
+            setTimeout(() => setExternalParticipantDefaults(), 200);
         });
-        setTimeout(() => setExternalParticipantDefaults(), 200);
     }
 
     // Function to monitor office dropdown changes
@@ -1024,7 +1109,7 @@
                     const newOffice = officeDropdown.value;
                     if (newOffice && officeConfigs[newOffice]) {
                         console.log('Office changed to:', newOffice);
-                        setTimeout(() => applyOfficeConfig(newOffice), 100);
+                        setTimeout(() => applyOfficeConfig(newOffice), 300);
                     }
                 }
             });
@@ -1037,7 +1122,7 @@
             const officeName = officeDropdown.value;
             if (officeName && officeConfigs[officeName]) {
                 console.log('Office selected:', officeName);
-                setTimeout(() => applyOfficeConfig(officeName), 100);
+                setTimeout(() => applyOfficeConfig(officeName), 300);
             }
         });
         console.log('Office monitor setup complete');
@@ -1050,35 +1135,30 @@
 
     // Initialize when page is ready
     function initialize() {
-        console.log('SERVPRO Auto-Fill script v5.2 initialized (with compensation plan support)');
+        console.log('SERVPRO Auto-Fill script v5.4 initialized (with improved detection)');
 
-        // Always setup edit modal monitor
         setupEditModalMonitor();
 
-        // Only setup Create Job page features if on that page
         if (isCreateJobPage()) {
             console.log('On Create Job page, setting up full monitoring');
             setupOfficeMonitor();
             setTimeout(() => setupUserChangeTracking(), 1000);
-            setTimeout(() => setupEstimatorMonitor(), 1200);
-            setTimeout(() => setExternalParticipantDefaults(), 500);
+            setTimeout(() => setupEstimatorMonitor(), 1500);
+            setTimeout(() => setExternalParticipantDefaults(), 800);
 
-            // Check for default office and apply configuration
             const currentOffice = document.querySelector('#ctl00_ContentPlaceHolder1_JobParentInformation_GenaralInfo_comboBoxOffice_Input');
             if (currentOffice && currentOffice.value && officeConfigs[currentOffice.value]) {
                 console.log('Found default office:', currentOffice.value);
-                setTimeout(() => applyOfficeConfig(currentOffice.value), 700);
+                setTimeout(() => applyOfficeConfig(currentOffice.value), 1200);
             } else {
-                // If no office is set, default to Chesterfield
                 console.log('No office detected, applying Chesterfield defaults');
-                setTimeout(() => applyOfficeConfig('SERVPRO of Chesterfield'), 700);
+                setTimeout(() => applyOfficeConfig('SERVPRO of Chesterfield'), 1200);
             }
         } else {
             console.log('Not on Create Job page, only monitoring for Edit Job modal');
         }
     }
 
-    // Wait for the page to be fully loaded
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initialize);
     } else {
