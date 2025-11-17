@@ -89,7 +89,7 @@
         },
         '192791': { // Solomon, Lenzy
             supervisor: { value: '192286', text: 'Team, Contents - Chesterfield' },
-            jfc: { value: '191444', text: 'Echeverria, Cristal' },
+            jfc: { value: '211651', text: 'Browning, Samuel' },
             office: 'SERVPRO of Chesterfield'
         },
         '195592': { // Romano, John
