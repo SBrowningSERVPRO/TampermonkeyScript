@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      5.5
+// @version      5.7
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with improved detection)
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -35,7 +35,7 @@
         },
         '11138': { // Slaasted, Evan
             supervisor: { value: '21779', text: 'Team, One' },
-            jfc: { value: '6794', text: 'Parker, Sarah' },
+            jfc: { value: '191444', text: 'Echeverria, Cristal' }, // UPDATED
             office: 'SERVPRO of Chesterfield'
         },
         '2058': { // Ballas, Justin
@@ -84,7 +84,7 @@
         // Chesterfield - Contents Team
         '17879': { // Genest, Brian
             supervisor: { value: '192286', text: 'Team, Contents - Chesterfield' },
-            jfc: { value: '191444', text: 'Echeverria, Cristal' },
+            jfc: { value: '211651', text: 'Browning, Samuel' }, // UPDATED
             office: 'SERVPRO of Chesterfield'
         },
         '192791': { // Solomon, Lenzy
@@ -94,14 +94,14 @@
         },
         '195592': { // Romano, John
             supervisor: { value: '192286', text: 'Team, Contents - Chesterfield' },
-            jfc: { value: '191444', text: 'Echeverria, Cristal' },
+            jfc: { value: '211651', text: 'Browning, Samuel' }, // UPDATED
             office: 'SERVPRO of Chesterfield'
         },
 
         // Chesterfield - Direct Sales
-        '2099': { // Morgan, Robert
+        '2099': { // Morgan, Robert (Bobby)
             supervisor: { value: '10803', text: 'Direct, Sales' },
-            jfc: { value: '45120', text: 'Rogers, Melanie' },
+            jfc: { value: '6794', text: 'Parker, Sarah' }, // UPDATED
             office: 'SERVPRO of Chesterfield'
         },
 
@@ -204,7 +204,7 @@
         // Chesapeake - Contents
         '161878': { // Kimbrough, Brandi
             supervisor: { value: '86750', text: 'Team, Chesapeake - Contents' },
-            jfc: { value: '143694', text: 'Mason, Monica' },
+            jfc: { value: '191444', text: 'Echeverria, Cristal' }, // UPDATED
             office: 'SERVPRO of Chesapeake'
         },
 
@@ -321,22 +321,6 @@
             jfc: { value: '77219', text: 'Hubbell, Stacey' },
             office: 'SERVPRO of Arlington',
             backOffice: { value: '179364', text: 'Team, Recon Arlington' }
-        }
-    };
-
-    // Terry Thompson job type configurations
-    const terryThompsonConfigs = {
-        'water': {
-            backOffice: { value: '179363', text: 'Team, Water' },
-            jfc: { value: '168201', text: 'Clanton, Trameca' }
-        },
-        'contents': {
-            backOffice: { value: '179362', text: 'Team, Contents - Arlington' },
-            jfc: { value: '177870', text: 'Riaz, Saud' }
-        },
-        'recon': {
-            backOffice: { value: '179364', text: 'Team, Recon Arlington' },
-            jfc: { value: '193188', text: 'Ange, Diane' }
         }
     };
 
