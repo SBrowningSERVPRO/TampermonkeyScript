@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      5.7
+// @version      5.8
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with improved detection)
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -183,6 +183,11 @@
         '3762': { // Proffitt, Matthew
             supervisor: { value: '173947', text: 'Chesapeake, Team Two' },
             jfc: { value: '192734', text: 'Carden, Valerie' },
+            office: 'SERVPRO of Chesapeake'
+        },
+        '173718': { // Luther, Susanne
+            supervisor: { value: '173947', text: 'Chesapeake, Team Two' },
+            jfc: { value: '143694', text: 'Mason, Monica' },
             office: 'SERVPRO of Chesapeake'
         },
         '90653': { // Reid, Darryl
