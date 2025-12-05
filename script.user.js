@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      5.8
+// @version      5.9
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with improved detection)
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -325,6 +325,22 @@
             supervisor: { value: '177988', text: 'Arlington, Team' },
             jfc: { value: '77219', text: 'Hubbell, Stacey' },
             office: 'SERVPRO of Arlington',
+            backOffice: { value: '179364', text: 'Team, Recon Arlington' }
+        }
+    };
+
+    // MISSING CONFIGURATION FOR TERRY THOMPSON ADDED HERE
+    const terryThompsonConfigs = {
+        'water': {
+            jfc: { value: '168201', text: 'Clanton, Trameca' },
+            backOffice: { value: '179363', text: 'Team, Water' }
+        },
+        'contents': {
+            jfc: { value: '177870', text: 'Riaz, Saud' },
+            backOffice: { value: '179362', text: 'Team, Contents - Arlington' }
+        },
+        'recon': {
+            jfc: { value: '193188', text: 'Ange, Diane' },
             backOffice: { value: '179364', text: 'Team, Recon Arlington' }
         }
     };
