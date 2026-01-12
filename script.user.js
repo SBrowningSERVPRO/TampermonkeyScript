@@ -778,144 +778,231 @@
 
     // Function to setup estimator monitoring in Edit Modal
     function setupEditModalEstimatorMonitor(iframeDoc) {
-        console.log('Setting up edit modal estimator monitoring...');
-        isEditMode = true;
+    console.log('Setting up edit modal estimator monitoring...');
+    isEditMode = true;
 
-        // Wait for dropdowns to be fully loaded
-        waitForDropdownsReady(iframeDoc, () => {
-            const participantDropdowns = iframeDoc.querySelectorAll('div[id*="Estimator"].RadComboBox, div[id*="EstimatorComboBox"].RadComboBox');
-            let estimatorDropdown = null;
+    // Clear any previous user modifications for edit mode
+    userModifiedFields.clear();
 
-            participantDropdowns.forEach(dropdown => {
+    // Enhanced waiting for dropdowns to be truly ready
+    function waitForEditModeReady(callback, maxWait = 10000) {
+        const startTime = Date.now();
+        
+        function checkReady() {
+            if (Date.now() - startTime > maxWait) {
+                console.warn('Edit mode initialization timeout, proceeding anyway');
+                callback();
+                return;
+            }
+
+            const dropdowns = iframeDoc.querySelectorAll('div[id*="Estimator"].RadComboBox, div[id*="EstimatorComboBox"].RadComboBox');
+            if (dropdowns.length === 0) {
+                setTimeout(checkReady, 200);
+                return;
+            }
+
+            // Check if dropdowns have initialized content
+            let readyCount = 0;
+            let estimatorFound = false;
+            
+            dropdowns.forEach(dropdown => {
                 if (isCompensationPlanDropdown(dropdown)) return;
-
+                
                 const label = getParticipantLabel(dropdown);
                 if (label === 'Estimator') {
-                    estimatorDropdown = dropdown;
+                    estimatorFound = true;
+                    if (isDropdownReady(dropdown)) {
+                        readyCount++;
+                    }
                 }
             });
 
-            if (!estimatorDropdown) {
-                console.log('Estimator dropdown not found in edit modal');
-                return;
+            if (estimatorFound && readyCount > 0) {
+                console.log('Edit mode dropdowns ready, proceeding...');
+                callback();
+            } else {
+                setTimeout(checkReady, 200);
             }
-
-            const estimatorInput = estimatorDropdown.querySelector('input.rcbInput');
-            const estimatorHiddenField = estimatorDropdown.querySelector('input[type="hidden"][name*="_ClientState"]');
-
-            if (!estimatorInput || !estimatorHiddenField) {
-                console.log('Estimator input elements not found in edit modal');
-                return;
-            }
-
-            // Monitor for changes to estimator selection
-            const observer = new MutationObserver((mutations) => {
-                mutations.forEach((mutation) => {
-                    if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
-                        try {
-                            const clientState = JSON.parse(estimatorHiddenField.value);
-                            if (clientState && clientState.value) {
-                                console.log('Edit modal estimator changed:', clientState.value);
-                                setTimeout(() => {
-                                    applyEstimatorConfig(clientState.value, iframeDoc);
-                                }, 200);
-                            }
-                        } catch (e) {
-                            console.log('Could not parse estimator client state in edit modal');
-                        }
-                    }
-                });
-            });
-
-            observer.observe(estimatorHiddenField, { attributes: true, attributeFilter: ['value'] });
-
-            estimatorInput.addEventListener('change', () => {
-                setTimeout(() => {
-                    try {
-                        const clientState = JSON.parse(estimatorHiddenField.value);
-                        if (clientState && clientState.value) {
-                            console.log('Edit modal estimator changed (via event):', clientState.value);
-                            applyEstimatorConfig(clientState.value, iframeDoc);
-                        }
-                    } catch (e) {
-                        console.log('Could not parse estimator client state on change in edit modal');
-                    }
-                }, 200);
-            });
-
-            console.log('Edit modal estimator monitoring setup complete');
-        });
+        }
+        
+        checkReady();
     }
+
+    waitForEditModeReady(() => {
+        const participantDropdowns = iframeDoc.querySelectorAll('div[id*="Estimator"].RadComboBox, div[id*="EstimatorComboBox"].RadComboBox');
+        let estimatorDropdown = null;
+        let estimatorInput = null;
+        let estimatorHiddenField = null;
+
+        // Find estimator dropdown
+        participantDropdowns.forEach(dropdown => {
+            if (isCompensationPlanDropdown(dropdown)) return;
+            const label = getParticipantLabel(dropdown);
+            if (label === 'Estimator') {
+                estimatorDropdown = dropdown;
+                estimatorInput = dropdown.querySelector('input.rcbInput');
+                estimatorHiddenField = dropdown.querySelector('input[type="hidden"][name*="_ClientState"]');
+            }
+        });
+
+        if (!estimatorDropdown || !estimatorInput || !estimatorHiddenField) {
+            console.error('Estimator dropdown not found in edit modal');
+            return;
+        }
+
+        // Check if there's already an estimator selected and apply config
+        try {
+            const currentState = JSON.parse(estimatorHiddenField.value);
+            if (currentState && currentState.value) {
+                console.log('Found existing estimator on modal open:', currentState.value);
+                setTimeout(() => {
+                    applyEstimatorConfig(currentState.value, iframeDoc);
+                }, 500);
+            }
+        } catch (e) {
+            console.log('No existing estimator found on modal open');
+        }
+
+        // Setup change monitoring with debouncing
+        let changeTimeout = null;
+        
+        function handleEstimatorChange() {
+            if (changeTimeout) {
+                clearTimeout(changeTimeout);
+            }
+            
+            changeTimeout = setTimeout(() => {
+                try {
+                    const clientState = JSON.parse(estimatorHiddenField.value);
+                    if (clientState && clientState.value) {
+                        console.log('Edit modal estimator changed:', clientState.value);
+                        applyEstimatorConfig(clientState.value, iframeDoc);
+                    }
+                } catch (e) {
+                    console.log('Could not parse estimator state');
+                }
+            }, 300);
+        }
+
+        // Monitor hidden field changes
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+                    handleEstimatorChange();
+                }
+            });
+        });
+
+        observer.observe(estimatorHiddenField, { 
+            attributes: true, 
+            attributeFilter: ['value'] 
+        });
+
+        // Also listen for input change events
+        estimatorInput.addEventListener('change', handleEstimatorChange);
+        
+        // Store observer so we can disconnect it when modal closes
+        editModeObserver = observer;
+
+        console.log('Edit modal estimator monitoring setup complete');
+    });
+}
 
     // Function to monitor for Edit Job Information modal
     function setupEditModalMonitor() {
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                mutation.addedNodes.forEach((node) => {
-                    if (node.nodeType === 1 && node.id === 'RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common') {
-                        console.log('Edit Job Information modal detected. Waiting for iframe to be ready...');
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (node.nodeType === 1 && node.id === 'RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common') {
+                    console.log('Edit Job Information modal detected');
 
-                        const iframeName = "RadWindow_Common";
-                        let attempts = 0;
-                        const maxAttempts = 30; // Increased to 15 seconds
-                        const retryInterval = 500;
+                    const iframeName = "RadWindow_Common";
+                    let attempts = 0;
+                    const maxAttempts = 40; // 20 seconds
+                    const retryInterval = 500;
 
-                        function trySetupModal() {
-                            const modal = document.querySelector('#RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common');
-                            if (!modal) {
-                                console.log('Modal disappeared, stopping setup.');
-                                return;
-                            }
+                    function trySetupModal() {
+                        const modal = document.querySelector('#RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common');
+                        if (!modal) {
+                            console.log('Modal disappeared, stopping setup');
+                            return;
+                        }
 
-                            const iframe = modal.querySelector(`iframe[name="${iframeName}"]`);
-                            if (iframe) {
-                                try {
-                                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                                    if (iframeDoc && iframeDoc.readyState === 'complete' && iframeDoc.body && iframeDoc.body.children.length > 0) {
-                                        console.log('Edit modal iframe is ready, setting up monitoring.');
-                                        // Add extra delay to ensure all scripts have initialized
+                        const iframe = modal.querySelector(`iframe[name="${iframeName}"]`);
+                        if (iframe) {
+                            try {
+                                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                                
+                                // Check if iframe is ready with more thorough validation
+                                if (iframeDoc && 
+                                    iframeDoc.readyState === 'complete' && 
+                                    iframeDoc.body && 
+                                    iframeDoc.body.children.length > 0) {
+                                    
+                                    // Additional check: make sure the form content is loaded
+                                    const hasDropdowns = iframeDoc.querySelectorAll('.RadComboBox').length > 0;
+                                    
+                                    if (hasDropdowns) {
+                                        console.log('Edit modal iframe fully loaded and ready');
+                                        // Extra delay to ensure all scripts and AJAX are complete
                                         setTimeout(() => {
                                             setupEditModalEstimatorMonitor(iframeDoc);
-                                        }, 500);
+                                        }, 800);
+                                        return;
                                     } else {
-                                        throw new Error('Iframe not ready');
+                                        console.log('Iframe loaded but dropdowns not yet rendered');
+                                        throw new Error('Dropdowns not ready');
                                     }
-                                } catch (e) {
-                                    attempts++;
-                                    if (attempts < maxAttempts) {
-                                        console.log(`Iframe not ready, retrying... (Attempt ${attempts}/${maxAttempts})`);
-                                        setTimeout(trySetupModal, retryInterval);
-                                    } else {
-                                        console.error(`Failed to access edit modal iframe content after ${maxAttempts * retryInterval}ms.`);
-                                    }
+                                } else {
+                                    throw new Error('Iframe not ready');
                                 }
-                            } else {
+                            } catch (e) {
                                 attempts++;
                                 if (attempts < maxAttempts) {
-                                    console.log(`Iframe not found, retrying... (Attempt ${attempts}/${maxAttempts})`);
+                                    console.log(`Iframe not ready, retrying... (${attempts}/${maxAttempts})`);
                                     setTimeout(trySetupModal, retryInterval);
                                 } else {
-                                    console.error(`Failed to find edit modal iframe after ${maxAttempts * retryInterval}ms.`);
+                                    console.error(`Failed to initialize edit modal after ${maxAttempts * retryInterval}ms`);
                                 }
                             }
+                        } else {
+                            attempts++;
+                            if (attempts < maxAttempts) {
+                                console.log(`Iframe not found, retrying... (${attempts}/${maxAttempts})`);
+                                setTimeout(trySetupModal, retryInterval);
+                            } else {
+                                console.error('Failed to find edit modal iframe');
+                            }
                         }
-                        setTimeout(trySetupModal, 250);
                     }
-                });
+                    
+                    // Start trying after a short delay
+                    setTimeout(trySetupModal, 300);
+                }
+            });
 
-                mutation.removedNodes.forEach((node) => {
-                    if (node.nodeType === 1 && node.id === 'RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common') {
-                        console.log('Edit Job Information modal closed');
-                        isEditMode = false;
+            mutation.removedNodes.forEach((node) => {
+                if (node.nodeType === 1 && node.id === 'RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common') {
+                    console.log('Edit Job Information modal closed');
+                    isEditMode = false;
+                    
+                    // Disconnect the observer
+                    if (editModeObserver) {
+                        editModeObserver.disconnect();
+                        editModeObserver = null;
                     }
-                });
+                    
+                    // Clear user modifications
+                    userModifiedFields.clear();
+                }
             });
         });
+    });
 
-        observer.observe(document.body, { childList: true, subtree: true });
-        console.log('Edit modal monitor setup complete');
-    }
-
+    observer.observe(document.body, { childList: true, subtree: true });
+    console.log('Edit modal monitor active');
+}
+    
     // Function to setup estimator monitoring (for Create Job page)
     function setupEstimatorMonitor() {
         console.log('Setting up estimator monitoring...');
