@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      6.0
+// @version      6.1
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with improved detection)
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -1256,5 +1256,444 @@
     } else {
         initialize();
     }
+
+// ==================== ST. PATRICK'S DAY THEME (March 17, 2026) ====================
+// Add this section to your existing SERVPRO script
+
+(function() {
+    'use strict';
+
+    // Check if today is St. Patrick's Day 2026 (March 17, 2026)
+    const today = new Date();
+    const isStPatricksDay = (today.getMonth() === 2 && today.getDate() === 17 && today.getFullYear() === 2026);
+
+    if (!isStPatricksDay) {
+        return; // Exit if not St. Patrick's Day 2026
+    }
+
+    // ==================== FALLING CLOVERS ====================
+
+    function createFallingClovers() {
+        if (window.location.pathname.includes('/Calendar')) {
+            return;
+        }
+
+        const cloverContainer = document.createElement('div');
+        cloverContainer.id = 'clover-container';
+        cloverContainer.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            overflow: hidden;
+        `;
+        document.body.appendChild(cloverContainer);
+
+        const cloverImageUrl = 'https://raw.githubusercontent.com/SBrowningSERVPRO/TampermonkeyScript/main/Clover.png';
+
+        if (!window.stPatricksMouse) {
+            window.stPatricksMouse = { x: -1000, y: -1000 };
+        }
+
+        window.addEventListener('mousemove', function(e) {
+            window.stPatricksMouse.x = e.clientX;
+            window.stPatricksMouse.y = e.clientY;
+        }, true);
+
+        const activeClovers = [];
+
+        function createClover() {
+            const clover = document.createElement('img');
+            clover.src = cloverImageUrl;
+            clover.className = 'falling-clover';
+
+            let currentX = Math.random() * window.innerWidth;
+            let velocityX = 0;
+            const size = Math.random() * 20 + 20;
+            const duration = Math.random() * 10 + 15;
+            const delay = Math.random() * 5;
+            const fallSpeed = (window.innerHeight + 50) / (duration * 60);
+            let currentY = -50;
+            let rotation = Math.random() * 360;
+            const rotationSpeed = (Math.random() - 0.5) * 4;
+            const driftSpeed = (Math.random() - 0.5) * 1;
+
+            clover.style.cssText = `
+                position: fixed;
+                left: ${currentX}px;
+                top: -50px;
+                width: ${size}px;
+                height: ${size}px;
+                opacity: ${Math.random() * 0.4 + 0.6};
+                transform: rotate(${rotation}deg);
+                filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+                will-change: transform;
+                z-index: 9999;
+            `;
+
+            cloverContainer.appendChild(clover);
+
+            const cloverData = { element: clover, x: currentX, y: currentY, velocityX: velocityX };
+            activeClovers.push(cloverData);
+
+            let animationStartTime = Date.now() + (delay * 1000);
+            let lastTime = Date.now();
+            let isActive = true;
+
+            function animate() {
+                if (!isActive) return;
+
+                const now = Date.now();
+
+                if (now < animationStartTime) {
+                    requestAnimationFrame(animate);
+                    return;
+                }
+
+                const deltaTime = Math.min((now - lastTime) / 16.67, 3);
+                lastTime = now;
+
+                currentY += fallSpeed * deltaTime;
+                currentX += driftSpeed * deltaTime;
+
+                const mouseX = window.stPatricksMouse.x;
+                const mouseY = window.stPatricksMouse.y;
+
+                if (mouseX > 0) {
+                    const dx = currentX - mouseX;
+                    const dy = currentY - mouseY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const repelRadius = 150;
+
+                    if (distance < repelRadius && distance > 1) {
+                        const force = Math.pow((repelRadius - distance) / repelRadius, 2) * 10;
+                        const angle = Math.atan2(dy, dx);
+                        velocityX += Math.cos(angle) * force;
+                        currentX += Math.cos(angle) * force * deltaTime;
+                    }
+                }
+
+                currentX += velocityX * deltaTime;
+                velocityX *= 0.92;
+                rotation += rotationSpeed * deltaTime;
+
+                if (currentX < -100) currentX = -100;
+                if (currentX > window.innerWidth + 100) currentX = window.innerWidth + 100;
+
+                clover.style.left = currentX + 'px';
+                clover.style.top = currentY + 'px';
+                clover.style.transform = `rotate(${rotation}deg)`;
+
+                cloverData.x = currentX;
+                cloverData.y = currentY;
+                cloverData.velocityX = velocityX;
+
+                if (currentY < window.innerHeight + 100) {
+                    requestAnimationFrame(animate);
+                } else {
+                    isActive = false;
+                    clover.remove();
+                    const index = activeClovers.indexOf(cloverData);
+                    if (index > -1) activeClovers.splice(index, 1);
+                    createClover();
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        const numberOfClovers = 15;
+        for (let i = 0; i < numberOfClovers; i++) {
+            setTimeout(() => createClover(), i * 500);
+        }
+    }
+
+    // ==================== GOLD COIN EXPLOSION ====================
+
+    function createGoldCoinExplosion(button) {
+        const coinContainer = document.createElement('div');
+        coinContainer.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10000;
+        `;
+        document.body.appendChild(coinContainer);
+
+        function createCoin() {
+            const coin = document.createElement('div');
+            coin.className = 'gold-coin';
+
+            const startX = Math.random() * window.innerWidth;
+            const startY = -50;
+            const endX = startX + (Math.random() - 0.5) * 300;
+            const endY = window.innerHeight + 100;
+            const size = Math.random() * 20 + 30;
+            const duration = Math.random() * 1 + 2.5;
+            const rotationSpeed = Math.random() * 720 + 360;
+            const delay = Math.random() * 0.5;
+
+            coin.style.cssText = `
+                position: fixed;
+                left: ${startX}px;
+                top: ${startY}px;
+                font-size: ${size}px;
+                animation: coinFallDown ${duration}s ease-in ${delay}s forwards;
+                transform-origin: center;
+                filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+                z-index: 10001;
+            `;
+
+            coin.style.setProperty('--startX', `${startX}px`);
+            coin.style.setProperty('--endX', `${endX}px`);
+            coin.style.setProperty('--startY', `${startY}px`);
+            coin.style.setProperty('--endY', `${endY}px`);
+            coin.style.setProperty('--rotation', `${rotationSpeed}deg`);
+
+            const coinEmojis = ['🪙', '💰', '🍀', '🌟'];
+            coin.textContent = coinEmojis[Math.floor(Math.random() * coinEmojis.length)];
+
+            coinContainer.appendChild(coin);
+
+            setTimeout(() => {
+                coin.remove();
+            }, (duration + delay) * 1000 + 100);
+        }
+
+        if (!document.getElementById('coin-animation-styles')) {
+            const style = document.createElement('style');
+            style.id = 'coin-animation-styles';
+            style.textContent = `
+                @keyframes coinFallDown {
+                    0% {
+                        transform: translateX(0) translateY(0) rotate(0deg) scale(1);
+                        opacity: 0;
+                    }
+                    5% {
+                        opacity: 1;
+                    }
+                    10% {
+                        transform: translateX(calc(var(--endX) - var(--startX))) translateY(10vh) rotate(72deg) scale(1.1);
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: translateX(calc(var(--endX) - var(--startX))) translateY(calc(var(--endY) - var(--startY))) rotate(var(--rotation)) scale(0.8);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        const numberOfCoins = 50;
+        for (let i = 0; i < numberOfCoins; i++) {
+            setTimeout(() => createCoin(), i * 20);
+        }
+
+        setTimeout(() => {
+            coinContainer.remove();
+        }, 5000);
+    }
+
+    // ==================== BUTTON MONITORING ====================
+
+    function setupCreateJobButtonMonitor() {
+        function findAndSetupButton() {
+            let createButton = document.querySelector('a[href*="CreateJob.aspx"]');
+
+            if (!createButton) {
+                const possibleSelectors = [
+                    'a[href*="CreateJob"]',
+                    'input[value*="Create"]',
+                    '.create-job-btn',
+                    '#createJobButton',
+                    'img[alt="Create Job"]',
+                    'img[title="Create Job"]'
+                ];
+
+                for (const selector of possibleSelectors) {
+                    try {
+                        const elements = document.querySelectorAll(selector);
+                        for (const el of elements) {
+                            if (el.tagName === 'IMG') {
+                                const parentLink = el.closest('a');
+                                if (parentLink && parentLink.href && parentLink.href.includes('CreateJob')) {
+                                    createButton = parentLink;
+                                    break;
+                                }
+                            } else {
+                                const text = el.textContent || el.value || '';
+                                if (text.toLowerCase().includes('create') &&
+                                    (text.toLowerCase().includes('job') || text.toLowerCase().includes('new'))) {
+                                    createButton = el;
+                                    break;
+                                }
+                            }
+                        }
+                        if (createButton) break;
+                    } catch (e) {
+                        // Ignore selector errors
+                    }
+                }
+            }
+
+            if (!createButton) {
+                const allLinks = document.querySelectorAll('a[href*="Job"]');
+                for (const link of allLinks) {
+                    if (link.href.includes('CreateJob')) {
+                        createButton = link;
+                        break;
+                    }
+                }
+            }
+
+            if (createButton) {
+                createButton.addEventListener('click', function(e) {
+                    sessionStorage.setItem('stpatricks_triggerCoins', 'true');
+                    const rect = this.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    sessionStorage.setItem('stpatricks_buttonX', centerX.toString());
+                    sessionStorage.setItem('stpatricks_buttonY', centerY.toString());
+                }, true);
+
+                createButton.style.boxShadow = '0 0 15px rgba(0, 255, 0, 0.5)';
+                createButton.style.transition = 'box-shadow 0.3s';
+                createButton.style.borderRadius = '4px';
+
+                createButton.addEventListener('mouseenter', function() {
+                    this.style.boxShadow = '0 0 25px rgba(0, 255, 0, 0.8)';
+                });
+
+                createButton.addEventListener('mouseleave', function() {
+                    this.style.boxShadow = '0 0 15px rgba(0, 255, 0, 0.5)';
+                });
+
+                return true;
+            }
+
+            return false;
+        }
+
+        if (findAndSetupButton()) {
+            return;
+        }
+
+        const observer = new MutationObserver((mutations) => {
+            if (findAndSetupButton()) {
+                observer.disconnect();
+            }
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        const checkInterval = setInterval(() => {
+            if (findAndSetupButton()) {
+                clearInterval(checkInterval);
+            }
+        }, 1000);
+
+        setTimeout(() => {
+            clearInterval(checkInterval);
+            observer.disconnect();
+        }, 30000);
+    }
+
+    // ==================== CHECK FOR PENDING COIN EXPLOSION ====================
+
+    function checkForPendingCoinExplosion() {
+        const shouldTrigger = sessionStorage.getItem('stpatricks_triggerCoins');
+
+        if (shouldTrigger === 'true') {
+            let centerX = sessionStorage.getItem('stpatricks_buttonX');
+            let centerY = sessionStorage.getItem('stpatricks_buttonY');
+
+            if (!centerX || !centerY) {
+                centerX = window.innerWidth / 2;
+                centerY = window.innerHeight / 2;
+            } else {
+                centerX = parseFloat(centerX);
+                centerY = parseFloat(centerY);
+            }
+
+            sessionStorage.removeItem('stpatricks_triggerCoins');
+            sessionStorage.removeItem('stpatricks_buttonX');
+            sessionStorage.removeItem('stpatricks_buttonY');
+
+            const fakeButton = document.createElement('div');
+            fakeButton.style.cssText = `
+                position: fixed;
+                left: ${centerX}px;
+                top: ${centerY}px;
+                width: 1px;
+                height: 1px;
+                pointer-events: none;
+            `;
+            document.body.appendChild(fakeButton);
+
+            setTimeout(() => {
+                createGoldCoinExplosion(fakeButton);
+                setTimeout(() => fakeButton.remove(), 2000);
+            }, 300);
+        }
+    }
+
+    // ==================== ADD ST. PATRICK'S HEADER ====================
+
+    function addStPatricksHeader() {
+        const header = document.createElement('div');
+        header.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(90deg, #228B22 0%, #32CD32 50%, #228B22 100%);
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 9998;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        `;
+        header.innerHTML = '🍀 Happy St. Patrick\'s Day! 🍀 May the luck of the Irish be with you! 💚';
+        document.body.appendChild(header);
+
+        document.body.style.paddingTop = '50px';
+    }
+
+    // ==================== INITIALIZE ====================
+
+    function initializeStPatricksDay() {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+
+        function init() {
+            checkForPendingCoinExplosion();
+            setTimeout(() => createFallingClovers(), 500);
+            setTimeout(() => addStPatricksHeader(), 100);
+            setTimeout(() => setupCreateJobButtonMonitor(), 1000);
+        }
+    }
+
+    initializeStPatricksDay();
+
+})();
+
+// ==================== END ST. PATRICK'S DAY THEME ====================
 
 })();
