@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      6.1
+// @version      6.2
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with improved detection)
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -76,6 +76,11 @@
             office: 'SERVPRO of Chesterfield'
         },
         '115064': { // Leon Carrasco, Andres
+            supervisor: { value: '21781', text: 'Team, Three' },
+            jfc: { value: '211953', text: 'Harrell, Madelyn' },
+            office: 'SERVPRO of Chesterfield'
+        },
+        '145240': { // Leon Carrasco, Andres
             supervisor: { value: '21781', text: 'Team, Three' },
             jfc: { value: '211953', text: 'Harrell, Madelyn' },
             office: 'SERVPRO of Chesterfield'
