@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      6.4
+// @version      6.6
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with improved detection)
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -1300,54 +1300,6 @@
         return;
     }
 
-    // ==================== DISABLE BUTTON ====================
-
-    function addDisableButton() {
-        const btn = document.createElement('button');
-        btn.id = 'stpatricks-disable-btn';
-        btn.textContent = '🚫 Disable St. Patrick\'s Day Effects';
-        btn.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #1a5c1a;
-            color: white;
-            border: 2px solid #32CD32;
-            border-radius: 8px;
-            padding: 10px 16px;
-            font-family: Arial, sans-serif;
-            font-size: 13px;
-            font-weight: bold;
-            cursor: pointer;
-            z-index: 10001;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            transition: background 0.2s, transform 0.1s;
-        `;
-
-        btn.addEventListener('mouseenter', () => {
-            btn.style.background = '#c0392b';
-            btn.style.borderColor = '#e74c3c';
-        });
-        btn.addEventListener('mouseleave', () => {
-            btn.style.background = '#1a5c1a';
-            btn.style.borderColor = '#32CD32';
-        });
-        btn.addEventListener('mousedown', () => {
-            btn.style.transform = 'scale(0.96)';
-        });
-        btn.addEventListener('mouseup', () => {
-            btn.style.transform = 'scale(1)';
-        });
-
-        btn.addEventListener('click', () => {
-            if (confirm('Permanently disable St. Patrick\'s Day effects? This cannot be undone without clearing your browser storage.')) {
-                disablePermanently();
-            }
-        });
-
-        document.body.appendChild(btn);
-    }
-
     // ==================== FALLING CLOVERS ====================
 
     function createFallingClovers() {
@@ -1744,10 +1696,47 @@
             z-index: 9998;
             box-shadow: 0 2px 10px rgba(0,0,0,0.3);
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
         `;
         header.innerHTML = '🍀 Happy St. Patrick\'s Day! 🍀 May the luck of the Irish be with you! 💚';
-        document.body.appendChild(header);
 
+        const btn = document.createElement('button');
+        btn.id = 'stpatricks-disable-btn';
+        btn.textContent = '✕ Disable';
+        btn.style.cssText = `
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 4px;
+            padding: 3px 8px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            text-shadow: none;
+            white-space: nowrap;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        `;
+
+        btn.addEventListener('mouseenter', () => {
+            btn.style.background = 'rgba(0, 0, 0, 0.4)';
+        });
+        btn.addEventListener('mouseleave', () => {
+            btn.style.background = 'rgba(0, 0, 0, 0.2)';
+        });
+
+        btn.addEventListener('click', () => {
+            if (confirm('Permanently disable St. Patrick\'s Day effects? This cannot be undone without clearing your browser storage.')) {
+                disablePermanently();
+            }
+        });
+
+        header.appendChild(btn);
+        document.body.appendChild(header);
         document.body.style.paddingTop = '50px';
     }
 
@@ -1765,10 +1754,11 @@
             setTimeout(() => createFallingClovers(), 500);
             setTimeout(() => addStPatricksHeader(), 100);
             setTimeout(() => setupCreateJobButtonMonitor(), 1000);
-            setTimeout(() => addDisableButton(), 200);
         }
     }
 
     initializeStPatricksDay();
 })();
+
+// ==================== END ST. PATRICK'S DAY THEME ====================
     })();
