@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      6.2
+// @version      6.4
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with improved detection)
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -455,12 +455,12 @@
     function isDropdownReady(comboBoxElement) {
         const input = comboBoxElement.querySelector('input.rcbInput');
         const hiddenField = comboBoxElement.querySelector('input[type="hidden"][name*="_ClientState"]');
-        
+
         if (!input || !hiddenField) return false;
-        
+
         // Check if the dropdown is visible and enabled
         if (input.disabled || input.readOnly) return false;
-        
+
         // Check if it has a parent that's visible
         const isVisible = comboBoxElement.offsetParent !== null;
         return isVisible;
@@ -473,7 +473,7 @@
 
         const input = comboBoxElement.querySelector('input.rcbInput');
         const hiddenField = comboBoxElement.querySelector('input[type="hidden"][name*="_ClientState"]');
-        
+
         if (!input || !hiddenField) {
             if (retryCount < maxRetries) {
                 console.log(`Dropdown elements not found, retrying... (${retryCount + 1}/${maxRetries})`);
@@ -533,7 +533,7 @@
 
         input.dispatchEvent(new Event('change', { bubbles: true }));
         hiddenField.dispatchEvent(new Event('change', { bubbles: true }));
-        
+
         console.log(`✓ Successfully set ${fieldId} to: ${text}`);
         return true;
     }
@@ -541,10 +541,10 @@
     // Function to wait for dropdowns to be ready
     function waitForDropdownsReady(context, callback, timeout = 5000) {
         const startTime = Date.now();
-        
+
         function checkReady() {
             const dropdowns = context.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox, div[id*="Estimator"].RadComboBox');
-            
+
             if (dropdowns.length === 0) {
                 if (Date.now() - startTime < timeout) {
                     setTimeout(checkReady, 200);
@@ -554,7 +554,7 @@
                 callback();
                 return;
             }
-            
+
             // Check if at least some dropdowns are ready
             let readyCount = 0;
             dropdowns.forEach(dropdown => {
@@ -562,7 +562,7 @@
                     readyCount++;
                 }
             });
-            
+
             if (readyCount > 0 || Date.now() - startTime >= timeout) {
                 console.log(`Found ${readyCount} ready dropdowns, proceeding...`);
                 callback();
@@ -570,7 +570,7 @@
                 setTimeout(checkReady, 200);
             }
         }
-        
+
         checkReady();
     }
 
@@ -636,7 +636,7 @@
         if (!context) return;
 
         const participantDropdowns = context.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox, div[id*="Estimator"].RadComboBox');
-        
+
         // Set Back Office Team first
         participantDropdowns.forEach(dropdown => {
             if (isCompensationPlanDropdown(dropdown)) return;
@@ -704,7 +704,7 @@
             participantDropdowns.forEach(dropdown => {
                 if (isCompensationPlanDropdown(dropdown)) return;
                 const label = getParticipantLabel(dropdown);
-                
+
                 if (label === 'Supervisor' && estimatorData.supervisor) {
                     setDropdownValue(dropdown, estimatorData.supervisor.value, estimatorData.supervisor.text, true);
                 }
@@ -715,7 +715,7 @@
                 participantDropdowns.forEach(dropdown => {
                     if (isCompensationPlanDropdown(dropdown)) return;
                     const label = getParticipantLabel(dropdown);
-                    
+
                     if (label === 'Coordinator' && estimatorData.jfc) {
                         setDropdownValue(dropdown, estimatorData.jfc.value, estimatorData.jfc.text, true);
                     }
@@ -727,7 +727,7 @@
                 participantDropdowns.forEach(dropdown => {
                     if (isCompensationPlanDropdown(dropdown)) return;
                     const label = getParticipantLabel(dropdown);
-                    
+
                     if (label === 'Back Office Team') {
                         if (estimatorData.backOffice) {
                             setDropdownValue(dropdown, estimatorData.backOffice.value, estimatorData.backOffice.text, true);
@@ -744,7 +744,7 @@
                     participantDropdowns.forEach(dropdown => {
                         if (isCompensationPlanDropdown(dropdown)) return;
                         const label = getParticipantLabel(dropdown);
-                        
+
                         if (label && officeConfig[label] && !['Estimator', 'Supervisor', 'Coordinator', 'Back Office Team'].includes(label)) {
                             if (label === 'Marketing') {
                                 const currentValue = getCurrentDropdownValue(dropdown);
@@ -792,7 +792,7 @@
     // Enhanced waiting for dropdowns to be truly ready
     function waitForEditModeReady(callback, maxWait = 10000) {
         const startTime = Date.now();
-        
+
         function checkReady() {
             if (Date.now() - startTime > maxWait) {
                 console.warn('Edit mode initialization timeout, proceeding anyway');
@@ -809,10 +809,10 @@
             // Check if dropdowns have initialized content
             let readyCount = 0;
             let estimatorFound = false;
-            
+
             dropdowns.forEach(dropdown => {
                 if (isCompensationPlanDropdown(dropdown)) return;
-                
+
                 const label = getParticipantLabel(dropdown);
                 if (label === 'Estimator') {
                     estimatorFound = true;
@@ -829,7 +829,7 @@
                 setTimeout(checkReady, 200);
             }
         }
-        
+
         checkReady();
     }
 
@@ -870,12 +870,12 @@
 
         // Setup change monitoring with debouncing
         let changeTimeout = null;
-        
+
         function handleEstimatorChange() {
             if (changeTimeout) {
                 clearTimeout(changeTimeout);
             }
-            
+
             changeTimeout = setTimeout(() => {
                 try {
                     const clientState = JSON.parse(estimatorHiddenField.value);
@@ -898,14 +898,14 @@
             });
         });
 
-        observer.observe(estimatorHiddenField, { 
-            attributes: true, 
-            attributeFilter: ['value'] 
+        observer.observe(estimatorHiddenField, {
+            attributes: true,
+            attributeFilter: ['value']
         });
 
         // Also listen for input change events
         estimatorInput.addEventListener('change', handleEstimatorChange);
-        
+
         // Store observer so we can disconnect it when modal closes
         editModeObserver = observer;
 
@@ -937,16 +937,16 @@
                         if (iframe) {
                             try {
                                 const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                                
+
                                 // Check if iframe is ready with more thorough validation
-                                if (iframeDoc && 
-                                    iframeDoc.readyState === 'complete' && 
-                                    iframeDoc.body && 
+                                if (iframeDoc &&
+                                    iframeDoc.readyState === 'complete' &&
+                                    iframeDoc.body &&
                                     iframeDoc.body.children.length > 0) {
-                                    
+
                                     // Additional check: make sure the form content is loaded
                                     const hasDropdowns = iframeDoc.querySelectorAll('.RadComboBox').length > 0;
-                                    
+
                                     if (hasDropdowns) {
                                         console.log('Edit modal iframe fully loaded and ready');
                                         // Extra delay to ensure all scripts and AJAX are complete
@@ -980,7 +980,7 @@
                             }
                         }
                     }
-                    
+
                     // Start trying after a short delay
                     setTimeout(trySetupModal, 300);
                 }
@@ -990,13 +990,13 @@
                 if (node.nodeType === 1 && node.id === 'RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common') {
                     console.log('Edit Job Information modal closed');
                     isEditMode = false;
-                    
+
                     // Disconnect the observer
                     if (editModeObserver) {
                         editModeObserver.disconnect();
                         editModeObserver = null;
                     }
-                    
+
                     // Clear user modifications
                     userModifiedFields.clear();
                 }
@@ -1007,11 +1007,11 @@
     observer.observe(document.body, { childList: true, subtree: true });
     console.log('Edit modal monitor active');
 }
-    
+
     // Function to setup estimator monitoring (for Create Job page)
     function setupEstimatorMonitor() {
         console.log('Setting up estimator monitoring...');
-        
+
         waitForDropdownsReady(document, () => {
             const participantDropdowns = document.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox');
             let estimatorDropdown = null;
@@ -1268,12 +1268,84 @@
 (function() {
     'use strict';
 
+    // ==================== PERMANENT DISABLE CHECK ====================
+    const DISABLE_KEY = 'stpatricks_disabled';
+
+    function isDisabled() {
+        return localStorage.getItem(DISABLE_KEY) === 'true';
+    }
+
+    function disablePermanently() {
+        localStorage.setItem(DISABLE_KEY, 'true');
+
+        const ids = ['clover-container', 'stpatricks-header', 'stpatricks-disable-btn'];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        });
+
+        const coinStyles = document.getElementById('coin-animation-styles');
+        if (coinStyles) coinStyles.remove();
+
+        document.body.style.paddingTop = '';
+
+        console.log('St. Patrick\'s Day theme permanently disabled.');
+    }
+
     // Check if today is St. Patrick's Day 2026 (March 17, 2026)
     const today = new Date();
     const isStPatricksDay = (today.getMonth() === 2 && today.getDate() === 17 && today.getFullYear() === 2026);
 
-    if (!isStPatricksDay) {
-        return; // Exit if not St. Patrick's Day 2026
+    if (!isStPatricksDay || isDisabled()) {
+        return;
+    }
+
+    // ==================== DISABLE BUTTON ====================
+
+    function addDisableButton() {
+        const btn = document.createElement('button');
+        btn.id = 'stpatricks-disable-btn';
+        btn.textContent = '🚫 Disable St. Patrick\'s Day Effects';
+        btn.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1a5c1a;
+            color: white;
+            border: 2px solid #32CD32;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 10001;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            transition: background 0.2s, transform 0.1s;
+        `;
+
+        btn.addEventListener('mouseenter', () => {
+            btn.style.background = '#c0392b';
+            btn.style.borderColor = '#e74c3c';
+        });
+        btn.addEventListener('mouseleave', () => {
+            btn.style.background = '#1a5c1a';
+            btn.style.borderColor = '#32CD32';
+        });
+        btn.addEventListener('mousedown', () => {
+            btn.style.transform = 'scale(0.96)';
+        });
+        btn.addEventListener('mouseup', () => {
+            btn.style.transform = 'scale(1)';
+        });
+
+        btn.addEventListener('click', () => {
+            if (confirm('Permanently disable St. Patrick\'s Day effects? This cannot be undone without clearing your browser storage.')) {
+                disablePermanently();
+            }
+        });
+
+        document.body.appendChild(btn);
     }
 
     // ==================== FALLING CLOVERS ====================
@@ -1656,6 +1728,7 @@
 
     function addStPatricksHeader() {
         const header = document.createElement('div');
+        header.id = 'stpatricks-header';
         header.style.cssText = `
             position: fixed;
             top: 0;
@@ -1692,13 +1765,10 @@
             setTimeout(() => createFallingClovers(), 500);
             setTimeout(() => addStPatricksHeader(), 100);
             setTimeout(() => setupCreateJobButtonMonitor(), 1000);
+            setTimeout(() => addDisableButton(), 200);
         }
     }
 
     initializeStPatricksDay();
-
 })();
-
-// ==================== END ST. PATRICK'S DAY THEME ====================
-
-})();
+    })();
