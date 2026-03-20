@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      6.6
+// @version      6.7
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with improved detection)
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -273,13 +273,13 @@
         // Arlington - Team Arlington
         '177893': { // Fernandez, Alexis
             supervisor: { value: '177988', text: 'Arlington, Team' },
-            jfc: { value: '168201', text: 'Clanton, Trameca' },
+            jfc: { value: '192726', text: 'Oden-McIntyre, Lolita' },
             office: 'SERVPRO of Arlington',
             backOffice: { value: '179363', text: 'Team, Water' }
         },
         '177894': { // Khalaf, Qusay
             supervisor: { value: '177988', text: 'Arlington, Team' },
-            jfc: { value: '168201', text: 'Clanton, Trameca' },
+            jfc: { value: '154121', text: 'Luce, Ashlee' },
             office: 'SERVPRO of Arlington',
             backOffice: { value: '179363', text: 'Team, Water' }
         },
