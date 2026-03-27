@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      6.7
+// @version      6.8
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with improved detection)
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
