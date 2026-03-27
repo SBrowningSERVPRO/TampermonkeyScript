@@ -40,7 +40,7 @@
         },
         '2058': { // Ballas, Justin
             supervisor: { value: '21779', text: 'Team, One' },
-            jfc: { value: '178596', text: 'Hanchey, Katelyn' },
+            jfc: { value: '205791', text: 'Greene, Dawn' },
             office: 'SERVPRO of Chesterfield'
         },
         '28458': { // Snyder, Matthew
@@ -50,7 +50,7 @@
         },
         '80068': { // Bahen, Nathan
             supervisor: { value: '21779', text: 'Team, One' },
-            jfc: { value: '45120', text: 'Rogers, Melanie' },
+            jfc: { value: '178596', text: 'Hanchey, Katelyn' },
             office: 'SERVPRO of Chesterfield'
         },
 
@@ -67,7 +67,7 @@
         },
         '20779': { // Fleming, Chris
             supervisor: { value: '21781', text: 'Team, Three' },
-            jfc: { value: '45120', text: 'Rogers, Melanie' },
+            jfc: { value: '192734', text: 'Carden, Valerie' },
             office: 'SERVPRO of Chesterfield'
         },
         '115061': { // Padilla, Paola
@@ -207,7 +207,7 @@
         },
         '144699': { // OQuinn, Mikkarice
             supervisor: { value: '173947', text: 'Chesapeake, Team Two' },
-            jfc: { value: '192734', text: 'Carden, Valerie' },
+            jfc: { value: '173730', text: 'Moore, Tracy' },
             office: 'SERVPRO of Chesapeake'
         },
 
