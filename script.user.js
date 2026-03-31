@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      6.8
+// @version      6.9
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with improved detection)
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -213,6 +213,12 @@
 
         // Chesapeake - Contents
         '161878': { // Kimbrough, Brandi
+            supervisor: { value: '86750', text: 'Team, Chesapeake - Contents' },
+            jfc: { value: '191444', text: 'Echeverria, Cristal' }, // UPDATED
+            office: 'SERVPRO of Chesapeake'
+        },
+
+        '141154': { // Romero, Marian
             supervisor: { value: '86750', text: 'Team, Chesapeake - Contents' },
             jfc: { value: '191444', text: 'Echeverria, Cristal' }, // UPDATED
             office: 'SERVPRO of Chesapeake'
