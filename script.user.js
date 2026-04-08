@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      6.9
+// @version      7.0
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with improved detection)
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -179,6 +179,11 @@
             office: 'SERVPRO of Chesapeake'
         },
         '205298': { // Nichols, Charles
+            supervisor: { value: '151611', text: 'Chesapeake, Team One' },
+            jfc: { value: '173730', text: 'Moore, Tracy' },
+            office: 'SERVPRO of Chesapeake'
+        },
+        '211271': { // Meehan, Charles
             supervisor: { value: '151611', text: 'Chesapeake, Team One' },
             jfc: { value: '173730', text: 'Moore, Tracy' },
             office: 'SERVPRO of Chesapeake'
