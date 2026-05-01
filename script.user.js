@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      7.1
+// @version      7.2
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with improved detection)
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -19,6 +19,34 @@
 
     // Track if we're in edit mode
     let isEditMode = false;
+
+    // Track the edit mode mutation observer so it can be disconnected
+    let editModeObserver = null;
+
+    // ==================== JFC → MIT JFC TL MAPPING ====================
+const jfcToMitJfcTl = {
+    '154121': { value: '216571', text: 'Fisher, Ebony' }, // Luce, Ashlee
+    '191444': { value: '66515', text: 'Burgess, Cristine' }, // Echeverria, Cristal
+    '205791': { value: '216571', text: 'Fisher, Ebony' }, // Greene, Dawn
+    '178596': { value: '216571', text: 'Fisher, Ebony' }, // Hanchey, Katelyn
+    '192734': { value: '216571', text: 'Fisher, Ebony' }, // Carden, Valerie
+    '6794': { value: '66515', text: 'Burgess, Cristine' }, // Parker, Sarah
+    '211953': { value: '216571', text: 'Fisher, Ebony' }, // Harrell, Madelyn
+    '211651': { value: '66515', text: 'Burgess, Cristine' }, // Browning, Samuel
+    '193188': { value: '66515', text: 'Burgess, Cristine' }, // Ange, Diane
+    '7046': { value: '66515', text: 'Burgess, Cristine' }, // Stroud, Kathryn
+    '77219': { value: '66515', text: 'Burgess, Cristine' }, // Hubbell, Stacey
+    '173722': { value: '66515', text: 'Burgess, Cristine' }, // Jackson, Courtney
+    '143694': { value: '66515', text: 'Burgess, Cristine' }, // Mason, Monica
+    '173730': { value: '66515', text: 'Burgess, Cristine' }, // Moore, Tracy
+    '172368': { value: '66515', text: 'Burgess, Cristine' }, // Sherman, Crystal
+    '192726': { value: '216571', text: 'Fisher, Ebony' }, // Oden-McIntyre, Lolita
+    '214744': { value: '216571', text: 'Fisher, Ebony' }, // Winfree, Tyonna
+    '177870': { value: '66515', text: 'Burgess, Cristine' }, // Riaz, Saud
+    '168201': { value: '66515', text: 'Burgess, Cristine' }, // Clanton, Trameca
+};
+// ====================================================================
+
 
     // Estimator database with supervisor and JFC mappings
     const estimatorDatabase = {
@@ -679,7 +707,7 @@
         console.log(`Applied Terry Thompson ${jobType} configuration`);
     }
 
-    // Function to apply estimator-based configuration
+// Function to apply estimator-based configuration
     function applyEstimatorConfig(estimatorValue, context = document) {
         const estimatorData = estimatorDatabase[estimatorValue];
         if (!estimatorData) {
@@ -696,7 +724,6 @@
             if (estimatorData.special === 'terry_thompson') {
                 participantDropdowns.forEach(dropdown => {
                     if (isCompensationPlanDropdown(dropdown)) return;
-
                     const label = getParticipantLabel(dropdown);
                     if (label === 'Supervisor') {
                         setDropdownValue(dropdown, estimatorData.supervisor.value, estimatorData.supervisor.text, true);
@@ -715,12 +742,10 @@
             // Get office configuration for this estimator's office
             const officeConfig = officeConfigs[estimatorData.office];
 
-            // Apply in stages with delays to ensure proper rendering
             // Stage 1: Supervisor
             participantDropdowns.forEach(dropdown => {
                 if (isCompensationPlanDropdown(dropdown)) return;
                 const label = getParticipantLabel(dropdown);
-
                 if (label === 'Supervisor' && estimatorData.supervisor) {
                     setDropdownValue(dropdown, estimatorData.supervisor.value, estimatorData.supervisor.text, true);
                 }
@@ -731,7 +756,6 @@
                 participantDropdowns.forEach(dropdown => {
                     if (isCompensationPlanDropdown(dropdown)) return;
                     const label = getParticipantLabel(dropdown);
-
                     if (label === 'Coordinator' && estimatorData.jfc) {
                         setDropdownValue(dropdown, estimatorData.jfc.value, estimatorData.jfc.text, true);
                     }
@@ -743,7 +767,6 @@
                 participantDropdowns.forEach(dropdown => {
                     if (isCompensationPlanDropdown(dropdown)) return;
                     const label = getParticipantLabel(dropdown);
-
                     if (label === 'Back Office Team') {
                         if (estimatorData.backOffice) {
                             setDropdownValue(dropdown, estimatorData.backOffice.value, estimatorData.backOffice.text, true);
@@ -754,14 +777,31 @@
                 });
             }, 300);
 
-            // Stage 4: Office-specific fields in edit mode (with delay)
+            // Stage 4: Mit JFC TL — runs on BOTH Create Job and Edit mode
+            setTimeout(() => {
+                participantDropdowns.forEach(dropdown => {
+                    if (isCompensationPlanDropdown(dropdown)) return;
+                    const label = getParticipantLabel(dropdown);
+                    if (label === 'Mit JFC TL') {
+                        const mitConfig = estimatorData.jfc && jfcToMitJfcTl[estimatorData.jfc.value];
+                        if (mitConfig) {
+                            setDropdownValue(dropdown, mitConfig.value, mitConfig.text, true);
+                        } else if (officeConfig && officeConfig['Mit JFC TL']) {
+                            const s = officeConfig['Mit JFC TL'];
+                            setDropdownValue(dropdown, s.value, s.text, true);
+                        }
+                    }
+                });
+            }, 450);
+
+            // Stage 5: Remaining office-specific fields — edit mode only (with delay)
             if (isEditMode && officeConfig) {
                 setTimeout(() => {
                     participantDropdowns.forEach(dropdown => {
                         if (isCompensationPlanDropdown(dropdown)) return;
                         const label = getParticipantLabel(dropdown);
 
-                        if (label && officeConfig[label] && !['Estimator', 'Supervisor', 'Coordinator', 'Back Office Team'].includes(label)) {
+                        if (label && officeConfig[label] && !['Estimator', 'Supervisor', 'Coordinator', 'Back Office Team', 'Mit JFC TL'].includes(label)) {
                             if (label === 'Marketing') {
                                 const currentValue = getCurrentDropdownValue(dropdown);
                                 if (currentValue && currentValue.value && currentValue.value !== '' && currentValue.value !== '3347' && currentValue.text !== 'Select') {
@@ -776,7 +816,7 @@
                             }
                         }
                     });
-                }, 450);
+                }, 600);
             }
         });
     }
