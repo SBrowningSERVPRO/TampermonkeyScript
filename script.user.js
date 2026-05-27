@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      7.2
+// @version      7.3
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator (with improved detection)
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -130,8 +130,8 @@ const jfcToMitJfcTl = {
             jfc: { value: '211651', text: 'Browning, Samuel' }, // UPDATED
             office: 'SERVPRO of Chesterfield'
         },
-        '195592': { // Evans, DJ
-            supervisor: { value: '216180', text: 'Team, Contents - Chesterfield' },
+        '216180': { // Evans, DJ
+            supervisor: { value: '192286', text: 'Team, Contents - Chesterfield' },
             jfc: { value: '211651', text: 'Browning, Samuel' }, // UPDATED
             office: 'SERVPRO of Chesterfield'
         },
