@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      8.1
+// @version      8.2
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -47,6 +47,10 @@
         '214744': { value: '216571', text: 'Fisher, Ebony' },
         '177870': { value: '66515', text: 'Burgess, Cristine' },
         '168201': { value: '66515', text: 'Burgess, Cristine' },
+        '193188': { value: '216571', text: 'Fisher, Ebony' },
+        '7046': { value: '216571', text: 'Fisher, Ebony' },
+        '77219': { value: '216571', text: 'Fisher, Ebony' },
+        '172368': { value: '216571', text: 'Fisher, Ebony' },
     };
     // ====================================================================
 
