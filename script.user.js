@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      8.4
+// @version      8.5
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -193,6 +193,7 @@
             'Controller':       { value: '155385', text: 'Cleary, Thomas' },
             'SMM':              { value: '3347', text: 'Not, Applicable' },
             'Executive':        { value: '206386', text: 'Executive, Team' },
+            'Upload Updates':   { value: '206392', text: 'Upload, Updates' },
             'Back Office Team': { value: '179363', text: 'Team, Water' },
             'Warehouse Manager':{ value: '3347', text: 'Not, Applicable' },
             'Contents PM':      { value: '3347', text: 'Not, Applicable' },
