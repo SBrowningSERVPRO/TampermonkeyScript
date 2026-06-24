@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      8.5
+// @version      8.6
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -28,31 +28,27 @@
 
     // ==================== JFC → MIT JFC TL MAPPING ====================
     const jfcToMitJfcTl = {
-        '154121': { value: '216571', text: 'Fisher, Ebony' },
-        '191444': { value: '66515', text: 'Burgess, Cristine' },
-        '205791': { value: '216571', text: 'Fisher, Ebony' },
-        '178596': { value: '216571', text: 'Fisher, Ebony' },
-        '192734': { value: '216571', text: 'Fisher, Ebony' },
-        '6794':   { value: '66515', text: 'Burgess, Cristine' },
-        '211953': { value: '216571', text: 'Fisher, Ebony' },
-        '211651': { value: '66515', text: 'Burgess, Cristine' },
-        '193188': { value: '66515', text: 'Burgess, Cristine' },
-        '7046':   { value: '66515', text: 'Burgess, Cristine' },
-        '77219':  { value: '66515', text: 'Burgess, Cristine' },
-        '173722': { value: '66515', text: 'Burgess, Cristine' },
-        '143694': { value: '66515', text: 'Burgess, Cristine' },
-        '173730': { value: '66515', text: 'Burgess, Cristine' },
-        '172368': { value: '66515', text: 'Burgess, Cristine' },
-        '192726': { value: '216571', text: 'Fisher, Ebony' },
-        '214744': { value: '216571', text: 'Fisher, Ebony' },
-        '177870': { value: '66515', text: 'Burgess, Cristine' },
-        '168201': { value: '66515', text: 'Burgess, Cristine' },
-        '193188': { value: '216571', text: 'Fisher, Ebony' },
-        '7046': { value: '216571', text: 'Fisher, Ebony' },
-        '77219': { value: '216571', text: 'Fisher, Ebony' },
-        '172368': { value: '216571', text: 'Fisher, Ebony' },
-        '214744' : { value: '216571', text: 'Fisher, Ebony' },
-    };
+    '154121': { value: '216571', text: 'Fisher, Ebony' },
+    '192726': { value: '216571', text: 'Fisher, Ebony' },
+    '205791': { value: '216571', text: 'Fisher, Ebony' },
+    '178596': { value: '216571', text: 'Fisher, Ebony' },
+    '192734': { value: '216571', text: 'Fisher, Ebony' },
+    '214744': { value: '216571', text: 'Fisher, Ebony' },
+    '211953': { value: '216571', text: 'Fisher, Ebony' },
+    '193188': { value: '216571', text: 'Fisher, Ebony' },
+    '7046':   { value: '216571', text: 'Fisher, Ebony' },
+    '77219':  { value: '216571', text: 'Fisher, Ebony' },
+    '172368': { value: '216571', text: 'Fisher, Ebony' },
+
+    '6794':   { value: '66515', text: 'Burgess, Cristine' },
+    '191444': { value: '66515', text: 'Burgess, Cristine' },
+    '211651': { value: '66515', text: 'Burgess, Cristine' },
+    '173722': { value: '66515', text: 'Burgess, Cristine' },
+    '143694': { value: '66515', text: 'Burgess, Cristine' },
+    '173730': { value: '66515', text: 'Burgess, Cristine' },
+    '177870': { value: '66515', text: 'Burgess, Cristine' },
+    '168201': { value: '66515', text: 'Burgess, Cristine' }
+};
     // ====================================================================
 
     // Estimator database with supervisor and JFC mappings
