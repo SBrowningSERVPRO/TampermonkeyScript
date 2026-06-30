@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      8.6
+// @version      8.7
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -49,6 +49,21 @@
     '177870': { value: '66515', text: 'Burgess, Cristine' },
     '168201': { value: '66515', text: 'Burgess, Cristine' }
 };
+    // ====================================================================
+
+    // ==================== COORDINATOR OVERRIDE MAPPING ====================
+    // Some Coordinators are selected directly (no Estimator chosen at all).
+    // For these, Estimator and Supervisor must always be "Not Applicable",
+    // every internal participant field gets that Coordinator's home-office
+    // defaults, and Mit JFC TL is always Burgess, Cristine.
+    const coordinatorOverrideDatabase = {
+        '154577': { name: 'Harrison, Anna',        office: 'SERVPRO of Chesterfield' },
+        '212037': { name: 'Richardson, Charmaine', office: 'SERVPRO of Arlington' },
+        '156354': { name: 'Price, Sunni',          office: 'SERVPRO of Chesapeake' },
+    };
+
+    const NOT_APPLICABLE = { value: '3347', text: 'Not, Applicable' };
+    const MIT_JFC_TL_BURGESS = { value: '66515', text: 'Burgess, Cristine' };
     // ====================================================================
 
     // Estimator database with supervisor and JFC mappings
@@ -240,6 +255,17 @@
         return comboBoxElement.offsetParent !== null;
     }
 
+    // Find a single participant dropdown by its label within a given context (document or iframe doc)
+    function findParticipantDropdownByLabel(context, label) {
+        const dropdowns = context.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox, div[id*="Estimator"].RadComboBox');
+        let found = null;
+        dropdowns.forEach(dropdown => {
+            if (isCompensationPlanDropdown(dropdown)) return;
+            if (getParticipantLabel(dropdown) === label) found = dropdown;
+        });
+        return found;
+    }
+
     function setDropdownValue(comboBoxElement, value, text, forceUpdate = false, retryCount = 0) {
         const maxRetries = 3;
         const retryDelay = 300;
@@ -355,8 +381,13 @@
                 });
             }, 450);
 
-            // Stage 5: Remaining office fields (edit mode only)
-            if (isEditMode && officeConfig) {
+            // Stage 5: Remaining office-wide fields.
+            // Always run this (not just in edit mode) — on the Create Job page these
+            // fields are normally seeded once by the Office dropdown, but if a
+            // Coordinator override (Harrison/Richardson/Price) previously filled them
+            // with a *different* office's defaults, changing the Estimator afterward
+            // needs to re-sync everything to the newly selected estimator's office.
+            if (officeConfig) {
                 setTimeout(() => {
                     participantDropdowns.forEach(dropdown => {
                         if (isCompensationPlanDropdown(dropdown)) return;
@@ -374,7 +405,76 @@
                         const s = officeConfig[label];
                         setDropdownValue(dropdown, s.value, s.text, true);
                     });
+
+                    if (!isEditMode) {
+                        setTimeout(() => setExternalParticipantDefaults(), 200);
+                    }
                 }, 600);
+            }
+        });
+    }
+
+    // ==================== APPLY COORDINATOR OVERRIDE ====================
+    // Triggered when Coordinator is one of the special-case people (Harrison, Anna /
+    // Richardson, Charmaine / Price, Sunni). These are selected directly without an
+    // Estimator, so Estimator + Supervisor are forced to Not Applicable, every other
+    // internal participant field gets that person's home-office defaults, and
+    // Mit JFC TL is always Burgess, Cristine.
+
+    function applyCoordinatorOverride(coordinatorValue, context = document) {
+        const overrideData = coordinatorOverrideDatabase[coordinatorValue];
+        if (!overrideData) return;
+
+        waitForDropdownsReady(context, () => {
+            // Stage 1: Estimator -> Not Applicable
+            const estimatorDropdown = findParticipantDropdownByLabel(context, 'Estimator');
+            if (estimatorDropdown) {
+                setDropdownValue(estimatorDropdown, NOT_APPLICABLE.value, NOT_APPLICABLE.text, true);
+            }
+
+            // Stage 2: Supervisor -> Not Applicable
+            setTimeout(() => {
+                const supervisorDropdown = findParticipantDropdownByLabel(context, 'Supervisor');
+                if (supervisorDropdown) {
+                    setDropdownValue(supervisorDropdown, NOT_APPLICABLE.value, NOT_APPLICABLE.text, true);
+                }
+            }, 150);
+
+            // Stage 3: Mit JFC TL -> Burgess, Cristine
+            setTimeout(() => {
+                const mitDropdown = findParticipantDropdownByLabel(context, 'Mit JFC TL');
+                if (mitDropdown) {
+                    setDropdownValue(mitDropdown, MIT_JFC_TL_BURGESS.value, MIT_JFC_TL_BURGESS.text, true);
+                }
+            }, 300);
+
+            // Stage 4: Remaining internal participant fields -> home-office defaults
+            const officeConfig = officeConfigs[overrideData.office];
+            if (officeConfig) {
+                setTimeout(() => {
+                    const participantDropdowns = context.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox, div[id*="Estimator"].RadComboBox');
+                    participantDropdowns.forEach(dropdown => {
+                        if (isCompensationPlanDropdown(dropdown)) return;
+                        const label = getParticipantLabel(dropdown);
+                        if (!label || ['Estimator', 'Supervisor', 'Coordinator', 'Mit JFC TL'].includes(label)) return;
+                        if (!officeConfig[label]) return;
+
+                        if (label === 'Marketing') {
+                            const cur = getCurrentDropdownValue(dropdown);
+                            if (cur && cur.value && cur.value !== '' && cur.value !== '3347' && cur.text !== 'Select') {
+                                console.log(`Preserving Marketing value: ${cur.text}`);
+                                return;
+                            }
+                        }
+                        const s = officeConfig[label];
+                        setDropdownValue(dropdown, s.value, s.text, true);
+                    });
+
+                    // On the create-job page also reset external participant defaults
+                    if (context === document) {
+                        setTimeout(() => setExternalParticipantDefaults(), 200);
+                    }
+                }, 450);
             }
         });
     }
@@ -394,7 +494,7 @@
         if (processedIframes.has(iframeDoc)) return;
         processedIframes.add(iframeDoc);
 
-        console.log('Setting up edit modal estimator monitoring...');
+        console.log('Setting up edit modal estimator/coordinator monitoring...');
         isEditMode = true;
         userModifiedFields.clear();
 
@@ -417,30 +517,30 @@
         }
 
         waitForEditModeReady(() => {
-            const participantDropdowns = iframeDoc.querySelectorAll('div[id*="Estimator"].RadComboBox, div[id*="EstimatorComboBox"].RadComboBox');
-            let estimatorHiddenField = null;
-            let estimatorInput = null;
+            const estimatorDropdown = findParticipantDropdownByLabel(iframeDoc, 'Estimator');
+            const coordinatorDropdown = findParticipantDropdownByLabel(iframeDoc, 'Coordinator');
 
-            participantDropdowns.forEach(dropdown => {
-                if (isCompensationPlanDropdown(dropdown)) return;
-                const label = getParticipantLabel(dropdown);
-                if (label === 'Estimator') {
-                    estimatorInput = dropdown.querySelector('input.rcbInput');
-                    estimatorHiddenField = dropdown.querySelector('input[type="hidden"][name*="_ClientState"]');
-                }
-            });
+            const estimatorInput = estimatorDropdown ? estimatorDropdown.querySelector('input.rcbInput') : null;
+            const estimatorHiddenField = estimatorDropdown ? estimatorDropdown.querySelector('input[type="hidden"][name*="_ClientState"]') : null;
+            const coordinatorInput = coordinatorDropdown ? coordinatorDropdown.querySelector('input.rcbInput') : null;
+            const coordinatorHiddenField = coordinatorDropdown ? coordinatorDropdown.querySelector('input[type="hidden"][name*="_ClientState"]') : null;
 
             if (!estimatorHiddenField || !estimatorInput) { console.error('Estimator dropdown not found in edit modal'); return; }
 
-            // Apply config for already-selected estimator
+            // Apply config for already-selected estimator / coordinator.
+            // A special-case Coordinator takes priority over a normal Estimator-driven setup.
             try {
-                const currentState = JSON.parse(estimatorHiddenField.value);
-                if (currentState && currentState.value) {
-                    setTimeout(() => applyEstimatorConfig(currentState.value, iframeDoc), 500);
+                const currentEstimatorState = JSON.parse(estimatorHiddenField.value);
+                const currentCoordinatorState = coordinatorHiddenField ? JSON.parse(coordinatorHiddenField.value) : null;
+
+                if (currentCoordinatorState && currentCoordinatorState.value && coordinatorOverrideDatabase[currentCoordinatorState.value]) {
+                    setTimeout(() => applyCoordinatorOverride(currentCoordinatorState.value, iframeDoc), 500);
+                } else if (currentEstimatorState && currentEstimatorState.value) {
+                    setTimeout(() => applyEstimatorConfig(currentEstimatorState.value, iframeDoc), 500);
                 }
             } catch (e) {}
 
-            // Monitor changes with debounce
+            // Monitor Estimator changes with debounce
             let changeTimeout = null;
             function handleEstimatorChange() {
                 if (changeTimeout) clearTimeout(changeTimeout);
@@ -458,6 +558,28 @@
             observer.observe(estimatorHiddenField, { attributes: true, attributeFilter: ['value'] });
             estimatorInput.addEventListener('change', handleEstimatorChange);
             editModeObserver = observer;
+
+            // Monitor Coordinator changes for the special-case people
+            if (coordinatorHiddenField && coordinatorInput) {
+                let coordChangeTimeout = null;
+                function handleCoordinatorChange() {
+                    if (coordChangeTimeout) clearTimeout(coordChangeTimeout);
+                    coordChangeTimeout = setTimeout(() => {
+                        try {
+                            const cs = JSON.parse(coordinatorHiddenField.value);
+                            if (cs && cs.value && coordinatorOverrideDatabase[cs.value]) {
+                                applyCoordinatorOverride(cs.value, iframeDoc);
+                            }
+                        } catch (e) {}
+                    }, 300);
+                }
+
+                const coordObserver = new MutationObserver(mutations => {
+                    mutations.forEach(m => { if (m.type === 'attributes' && m.attributeName === 'value') handleCoordinatorChange(); });
+                });
+                coordObserver.observe(coordinatorHiddenField, { attributes: true, attributeFilter: ['value'] });
+                coordinatorInput.addEventListener('change', handleCoordinatorChange);
+            }
         });
     }
 
@@ -553,6 +675,50 @@
         });
     }
 
+    function setupCoordinatorMonitor() {
+        waitForDropdownsReady(document, () => {
+            const coordinatorDropdown = findParticipantDropdownByLabel(document, 'Coordinator');
+            if (!coordinatorDropdown) return;
+
+            const coordinatorInput = coordinatorDropdown.querySelector('input.rcbInput');
+            const coordinatorHiddenField = coordinatorDropdown.querySelector('input[type="hidden"][name*="_ClientState"]');
+            if (!coordinatorInput || !coordinatorHiddenField) return;
+
+            const observer = new MutationObserver(mutations => {
+                mutations.forEach(m => {
+                    if (m.type === 'attributes' && m.attributeName === 'value') {
+                        try {
+                            const cs = JSON.parse(coordinatorHiddenField.value);
+                            if (cs && cs.value && coordinatorOverrideDatabase[cs.value]) {
+                                setTimeout(() => applyCoordinatorOverride(cs.value), 200);
+                            }
+                        } catch (e) {}
+                    }
+                });
+            });
+            observer.observe(coordinatorHiddenField, { attributes: true, attributeFilter: ['value'] });
+
+            coordinatorInput.addEventListener('change', () => {
+                setTimeout(() => {
+                    try {
+                        const cs = JSON.parse(coordinatorHiddenField.value);
+                        if (cs && cs.value && coordinatorOverrideDatabase[cs.value]) {
+                            applyCoordinatorOverride(cs.value);
+                        }
+                    } catch (e) {}
+                }, 200);
+            });
+
+            // Check the initial value in case Coordinator was already pre-set
+            try {
+                const cs = JSON.parse(coordinatorHiddenField.value);
+                if (cs && cs.value && coordinatorOverrideDatabase[cs.value]) {
+                    setTimeout(() => applyCoordinatorOverride(cs.value), 200);
+                }
+            } catch (e) {}
+        });
+    }
+
     function setExternalParticipantDefaults() {
         Object.keys(defaultExternalParticipants).forEach(elementId => {
             const element = document.getElementById(elementId);
@@ -629,7 +795,7 @@
     // ==================== INIT ====================
 
     function initialize() {
-        console.log('SERVPRO Auto-Fill v8.1 initialized');
+        console.log('SERVPRO Auto-Fill v8.7 initialized');
 
         startJobPageModalWatcher();
 
@@ -637,6 +803,7 @@
             setupOfficeMonitor();
             setTimeout(() => setupUserChangeTracking(), 1000);
             setTimeout(() => setupEstimatorMonitor(), 1500);
+            setTimeout(() => setupCoordinatorMonitor(), 1500);
             setTimeout(() => setExternalParticipantDefaults(), 800);
 
             const currentOffice = document.querySelector('#ctl00_ContentPlaceHolder1_JobParentInformation_GenaralInfo_comboBoxOffice_Input');
