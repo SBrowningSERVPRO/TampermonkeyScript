@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      8.7
+// @version      8.8
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -47,6 +47,7 @@
     '143694': { value: '66515', text: 'Burgess, Cristine' },
     '173730': { value: '66515', text: 'Burgess, Cristine' },
     '177870': { value: '66515', text: 'Burgess, Cristine' },
+    '218021': { value: '66515', text: 'Burgess, Cristine' },
     '168201': { value: '66515', text: 'Burgess, Cristine' }
 };
     // ====================================================================
@@ -117,6 +118,7 @@
         '90653':  { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '173722', text: 'Jackson, Courtney' }, office: 'SERVPRO of Chesapeake' },
         '95381':  { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '173730', text: 'Moore, Tracy' }, office: 'SERVPRO of Chesapeake' },
         '144699': { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '173730', text: 'Moore, Tracy' }, office: 'SERVPRO of Chesapeake' },
+        '211361': { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake' }, // Brittany Price
 
         // Chesapeake - Contents
         '161878': { supervisor: { value: '86750', text: 'Team, Chesapeake - Contents' }, jfc: { value: '191444', text: 'Echeverria, Cristal' }, office: 'SERVPRO of Chesapeake' },
@@ -358,7 +360,9 @@
                     if (isCompensationPlanDropdown(dropdown)) return;
                     const label = getParticipantLabel(dropdown);
                     if (label === 'Back Office Team') {
-                        const bo = estimatorData.backOffice || { value: '3347', text: 'Not, Applicable' };
+                        const bo = estimatorData.backOffice
+                            || (officeConfig && officeConfig['Back Office Team'])
+                            || { value: '3347', text: 'Not, Applicable' };
                         setDropdownValue(dropdown, bo.value, bo.text, true);
                     }
                 });
