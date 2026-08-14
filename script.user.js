@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      8.91
+// @version      9.0
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -39,6 +39,7 @@
     '7046':   { value: '216571', text: 'Fisher, Ebony' },
     '77219':  { value: '216571', text: 'Fisher, Ebony' },
     '172368': { value: '216571', text: 'Fisher, Ebony' },
+    '218021': { value: '216571', text: 'Fisher, Ebony' },
 
     '6794':   { value: '66515', text: 'Burgess, Cristine' },
     '191444': { value: '66515', text: 'Burgess, Cristine' },
@@ -47,7 +48,6 @@
     '143694': { value: '66515', text: 'Burgess, Cristine' },
     '173730': { value: '66515', text: 'Burgess, Cristine' },
     '177870': { value: '66515', text: 'Burgess, Cristine' },
-    '218021': { value: '66515', text: 'Burgess, Cristine' },
     '168201': { value: '66515', text: 'Burgess, Cristine' }
 };
     // ====================================================================
@@ -118,23 +118,23 @@
         '90653':  { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '173722', text: 'Jackson, Courtney' }, office: 'SERVPRO of Chesapeake' },
         '95381':  { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '173730', text: 'Moore, Tracy' }, office: 'SERVPRO of Chesapeake' },
         '144699': { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '173730', text: 'Moore, Tracy' }, office: 'SERVPRO of Chesapeake' },
-        '211361': { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake' }, // Brittany Price
+        '211361': { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '173722', text: 'Jackson, Courtney' }, office: 'SERVPRO of Chesapeake' },
 
         // Chesapeake - Contents
         '161878': { supervisor: { value: '86750', text: 'Team, Chesapeake - Contents' }, jfc: { value: '191444', text: 'Echeverria, Cristal' }, office: 'SERVPRO of Chesapeake' },
         '141154': { supervisor: { value: '86750', text: 'Team, Chesapeake - Contents' }, jfc: { value: '191444', text: 'Echeverria, Cristal' }, office: 'SERVPRO of Chesapeake' },
 
         // Chesapeake - Recon Team
-        '112796': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '172368', text: 'Sherman, Crystal' }, office: 'SERVPRO of Chesapeake' },
-        '119803': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '172368', text: 'Sherman, Crystal' }, office: 'SERVPRO of Chesapeake' },
-        '145494': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '172368', text: 'Sherman, Crystal' }, office: 'SERVPRO of Chesapeake' },
-        '158327': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '172368', text: 'Sherman, Crystal' }, office: 'SERVPRO of Chesapeake' },
-        '146667': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '172368', text: 'Sherman, Crystal' }, office: 'SERVPRO of Chesapeake' },
-        '146668': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '172368', text: 'Sherman, Crystal' }, office: 'SERVPRO of Chesapeake' },
-        '152487': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '172368', text: 'Sherman, Crystal' }, office: 'SERVPRO of Chesapeake' },
-        '143693': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '172368', text: 'Sherman, Crystal' }, office: 'SERVPRO of Chesapeake' },
-        '201275': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '172368', text: 'Sherman, Crystal' }, office: 'SERVPRO of Chesapeake' },
-        '207480': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '172368', text: 'Sherman, Crystal' }, office: 'SERVPRO of Chesapeake' },
+        '112796': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake' },
+        '119803': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake' },
+        '145494': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake' },
+        '158327': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake' },
+        '146667': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake' },
+        '146668': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake' },
+        '152487': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake' },
+        '143693': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake' },
+        '201275': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake' },
+        '207480': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake' },
 
         // Arlington - Team Arlington
         '177893': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '192726', text: 'Oden-McIntyre, Lolita' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },
@@ -179,7 +179,7 @@
             'Recon PM':         { value: '3347', text: 'Not, Applicable' },
             'Accounts Receivable': { value: '213540', text: 'Ballinger, Walt' },
             'Back Office Team': { value: '179363', text: 'Team, Water' },
-            'Recon Follow Up':  { value: '172368', text: 'Sherman, Crystal' },
+            'Recon Follow Up':  { value: '217715', text: 'Uy, John' },
             'ASM':              { value: '169925', text: 'Campos, Jill' },
             'FNOL':             { value: '206377', text: 'FNOL, Chesapeake' },
             'Dispatch':         { value: '206380', text: 'DISPATCH, CHESAPEAKE' },
@@ -799,7 +799,7 @@
     // ==================== INIT ====================
 
     function initialize() {
-        console.log('SERVPRO Auto-Fill v8.7 initialized');
+        console.log('SERVPRO Auto-Fill v9.0 initialized');
 
         startJobPageModalWatcher();
 
