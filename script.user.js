@@ -137,9 +137,9 @@
         '207480': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake' },
 
         // Arlington - Team Arlington
-        '177893': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '192726', text: 'Oden-McIntyre, Lolita' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },
+        '177893': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '214744', text: 'Winfree, Tyonna' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },
         '177894': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '214744', text: 'Winfree, Tyonna' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },
-        '193238': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '192726', text: 'Oden-McIntyre, Lolita' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },
+        '193238': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '154121', text: 'Luce, Ashlee' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },
         '214587': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '177870', text: 'Riaz, Saud' }, office: 'SERVPRO of Arlington', backOffice: { value: '179362', text: 'Team, Contents - Arlington' } },
         '217215': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '214744', text: 'Winfree, Tyonna' }, office: 'SERVPRO of Arlington', backOffice: { value: '179362', text: 'Team, Contents - Arlington' } },
 
