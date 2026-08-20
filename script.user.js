@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      9.1
+// @version      9.2
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -144,11 +144,11 @@
         '217215': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '214744', text: 'Winfree, Tyonna' }, office: 'SERVPRO of Arlington', backOffice: { value: '179362', text: 'Team, Contents - Arlington' } },
 
         // Arlington - Recon Team
-        '190914': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '193188', text: 'Ange, Diane' }, office: 'SERVPRO of Arlington', backOffice: { value: '179364', text: 'Team, Recon Arlington' } },
-        '204894': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '193188', text: 'Ange, Diane' }, office: 'SERVPRO of Arlington', backOffice: { value: '179364', text: 'Team, Recon Arlington' } },
-        '177896': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '7046', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Arlington', backOffice: { value: '179364', text: 'Team, Recon Arlington' } },
-        '177898': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '7046', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Arlington', backOffice: { value: '179364', text: 'Team, Recon Arlington' } },
-        '191446': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '77219', text: 'Hubbell, Stacey' }, office: 'SERVPRO of Arlington', backOffice: { value: '179364', text: 'Team, Recon Arlington' } },
+        '190914': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '193188', text: 'Ange, Diane' }, office: 'SERVPRO of Arlington', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        '204894': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '193188', text: 'Ange, Diane' }, office: 'SERVPRO of Arlington', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        '177896': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '7046', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Arlington', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        '177898': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '7046', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Arlington', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        '191446': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '77219', text: 'Hubbell, Stacey' }, office: 'SERVPRO of Arlington', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
     };
 
     const officeConfigs = {
