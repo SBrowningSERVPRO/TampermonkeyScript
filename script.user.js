@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      9.29
+// @version      9.30
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -135,6 +135,7 @@
         '143693': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
         '201275': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
         '207480': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        '218583': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
 
         // Arlington - Team Arlington
         '177893': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '214744', text: 'Winfree, Tyonna' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },
