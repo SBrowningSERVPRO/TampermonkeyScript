@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      9.30
+// @version      9.31
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -88,7 +88,7 @@
         // Chesterfield - Contents Team
         '195592':  { supervisor: { value: '192286', text: 'Team, Contents - Chesterfield' }, jfc: { value: '211651', text: 'Browning, Samuel' }, office: 'SERVPRO of Chesterfield' },
         '192791': { supervisor: { value: '192286', text: 'Team, Contents - Chesterfield' }, jfc: { value: '211651', text: 'Browning, Samuel' }, office: 'SERVPRO of Chesterfield' },
-        '216180': { supervisor: { value: '192286', text: 'Team, Contents - Chesterfield' }, jfc: { value: '211651', text: 'Browning, Samuel' }, office: 'SERVPRO of Chesterfield' },
+        '17879': { supervisor: { value: '192286', text: 'Team, Contents - Chesterfield' }, jfc: { value: '211651', text: 'Browning, Samuel' }, office: 'SERVPRO of Chesterfield' },
 
         // Chesterfield - Direct Sales
         '2099':   { supervisor: { value: '10803', text: 'Direct, Sales' }, jfc: { value: '6794', text: 'Parker, Sarah' }, office: 'SERVPRO of Chesterfield' },
@@ -180,7 +180,7 @@
             'Recon PM':         { value: '3347', text: 'Not, Applicable' },
             'Accounts Receivable': { value: '213540', text: 'Ballinger, Walt' },
             'Back Office Team': { value: '179363', text: 'Team, Water' },
-            'Recon Follow Up':  { value: '217289', text: 'Weaver, Haley' },
+            'Recon Follow Up':  { value: '219481', text: 'Follow Up, Rec Chesapeake' },
             'ASM':              { value: '169925', text: 'Campos, Jill' },
             'FNOL':             { value: '206377', text: 'FNOL, Chesapeake' },
             'Dispatch':         { value: '206380', text: 'DISPATCH, CHESAPEAKE' },
