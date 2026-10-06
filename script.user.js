@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      9.32
+// @version      10.0
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
-// @author       Samuel Browning (with fixes)
+// @author       Samuel Browning
 // @match        https://servpro.ngsapps.net/*
 // @updateURL    https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/main/script.user.js
 // @downloadURL  https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/main/script.user.js
@@ -329,7 +329,7 @@
 
     function applyEstimatorConfig(estimatorValue, context = document) {
         const estimatorData = estimatorDatabase[estimatorValue];
-        if (!estimatorData) return;
+        if (!estimatorData) { console.warn('Estimator ID not in estimatorDatabase:', estimatorValue); return; }
 
         waitForDropdownsReady(context, () => {
             const participantDropdowns = context.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox, div[id*="Estimator"].RadComboBox');
@@ -484,158 +484,134 @@
         });
     }
 
-    // ==================== EDIT MODAL ====================
-
-    function getEditModalIframe() {
-        const modal = document.querySelector('#RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common');
-        if (!modal) return null;
-        const iframe = modal.querySelector('iframe[name="RadWindow_Common"]');
-        if (!iframe) return null;
-        try { return iframe.contentDocument || iframe.contentWindow.document; }
-        catch (e) { return null; }
-    }
-
-    function setupEditModalEstimatorMonitor(iframeDoc) {
-        if (processedIframes.has(iframeDoc)) return;
-        processedIframes.add(iframeDoc);
-
-        console.log('Setting up edit modal estimator/coordinator monitoring...');
-        isEditMode = true;
-        userModifiedFields.clear();
-
-        function waitForEditModeReady(callback, maxWait = 10000) {
-            const startTime = Date.now();
-            function checkReady() {
-                if (Date.now() - startTime > maxWait) { callback(); return; }
-                const dropdowns = iframeDoc.querySelectorAll('div[id*="Estimator"].RadComboBox, div[id*="EstimatorComboBox"].RadComboBox');
-                if (dropdowns.length === 0) { setTimeout(checkReady, 200); return; }
-                let estimatorReady = false;
-                dropdowns.forEach(d => {
-                    if (!isCompensationPlanDropdown(d) && getParticipantLabel(d) === 'Estimator' && isDropdownReady(d)) {
-                        estimatorReady = true;
-                    }
-                });
-                if (estimatorReady) { callback(); }
-                else { setTimeout(checkReady, 200); }
-            }
-            checkReady();
-        }
-
-        waitForEditModeReady(() => {
-            const estimatorDropdown = findParticipantDropdownByLabel(iframeDoc, 'Estimator');
-            const coordinatorDropdown = findParticipantDropdownByLabel(iframeDoc, 'Coordinator');
-
-            const estimatorInput = estimatorDropdown ? estimatorDropdown.querySelector('input.rcbInput') : null;
-            const estimatorHiddenField = estimatorDropdown ? estimatorDropdown.querySelector('input[type="hidden"][name*="_ClientState"]') : null;
-            const coordinatorInput = coordinatorDropdown ? coordinatorDropdown.querySelector('input.rcbInput') : null;
-            const coordinatorHiddenField = coordinatorDropdown ? coordinatorDropdown.querySelector('input[type="hidden"][name*="_ClientState"]') : null;
-
-            if (!estimatorHiddenField || !estimatorInput) { console.error('Estimator dropdown not found in edit modal'); return; }
-
-            // Apply config for already-selected estimator / coordinator.
-            // A special-case Coordinator takes priority over a normal Estimator-driven setup.
-            try {
-                const currentEstimatorState = JSON.parse(estimatorHiddenField.value);
-                const currentCoordinatorState = coordinatorHiddenField ? JSON.parse(coordinatorHiddenField.value) : null;
-
-                if (currentCoordinatorState && currentCoordinatorState.value && coordinatorOverrideDatabase[currentCoordinatorState.value]) {
-                    setTimeout(() => applyCoordinatorOverride(currentCoordinatorState.value, iframeDoc), 500);
-                } else if (currentEstimatorState && currentEstimatorState.value) {
-                    setTimeout(() => applyEstimatorConfig(currentEstimatorState.value, iframeDoc), 500);
-                }
-            } catch (e) {}
-
-            // Monitor Estimator changes with debounce
-            let changeTimeout = null;
-            function handleEstimatorChange() {
-                if (changeTimeout) clearTimeout(changeTimeout);
-                changeTimeout = setTimeout(() => {
-                    try {
-                        const cs = JSON.parse(estimatorHiddenField.value);
-                        if (cs && cs.value) applyEstimatorConfig(cs.value, iframeDoc);
-                    } catch (e) {}
-                }, 300);
-            }
-
-            const observer = new MutationObserver(mutations => {
-                mutations.forEach(m => { if (m.type === 'attributes' && m.attributeName === 'value') handleEstimatorChange(); });
-            });
-            observer.observe(estimatorHiddenField, { attributes: true, attributeFilter: ['value'] });
-            estimatorInput.addEventListener('change', handleEstimatorChange);
-            editModeObserver = observer;
-
-            // Monitor Coordinator changes for the special-case people
-            if (coordinatorHiddenField && coordinatorInput) {
-                let coordChangeTimeout = null;
-                function handleCoordinatorChange() {
-                    if (coordChangeTimeout) clearTimeout(coordChangeTimeout);
-                    coordChangeTimeout = setTimeout(() => {
-                        try {
-                            const cs = JSON.parse(coordinatorHiddenField.value);
-                            if (cs && cs.value && coordinatorOverrideDatabase[cs.value]) {
-                                applyCoordinatorOverride(cs.value, iframeDoc);
-                            }
-                        } catch (e) {}
-                    }, 300);
-                }
-
-                const coordObserver = new MutationObserver(mutations => {
-                    mutations.forEach(m => { if (m.type === 'attributes' && m.attributeName === 'value') handleCoordinatorChange(); });
-                });
-                coordObserver.observe(coordinatorHiddenField, { attributes: true, attributeFilter: ['value'] });
-                coordinatorInput.addEventListener('change', handleCoordinatorChange);
-            }
-        });
-    }
-
-    // ==================== JOB PAGE PERSISTENT MODAL WATCHER ====================
+    // ==================== EDIT MODAL + JOB PAGE WATCHER (polling) ====================
 
     function isJobPage() {
         return /\/Enterprise\/Module\/Job\//i.test(window.location.pathname);
     }
 
+    // Returns the selected value ('' if empty), or null if the dropdown isn't in the DOM yet
+    function getComboValue(doc, label) {
+        const dd = findParticipantDropdownByLabel(doc, label);
+        if (!dd) return null;
+        const hf = dd.querySelector('input[type="hidden"][name*="_ClientState"]');
+        if (!hf) return null;
+        try { return JSON.parse(hf.value).value || ''; }
+        catch (e) { return ''; }
+    }
+
     function startJobPageModalWatcher() {
         if (!isJobPage()) return;
+        console.log('Job page detected — starting polling modal watcher');
 
-        console.log('Job page detected — starting persistent modal watcher');
+        const s = {
+            doc: null,          // iframe document of the current modal session
+            readyAt: 0,         // when the Estimator dropdown first became ready
+            initialized: false, // baseline taken / initial config applied
+            lastEst: null,
+            lastCoord: null,
+            busyUntil: 0,       // ignore changes caused by our own writes
+            resync: false
+        };
 
-        let watchInterval = null;
-        let lastSeenIframe = null;
-
-        function checkForModal() {
-            const modal = document.querySelector('#RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common');
-            if (!modal) {
-                if (lastSeenIframe !== null) {
-                    console.log('Edit modal closed (watcher)');
-                    isEditMode = false;
-                    if (editModeObserver) { editModeObserver.disconnect(); editModeObserver = null; }
-                    userModifiedFields.clear();
-                    lastSeenIframe = null;
-                }
-                return;
-            }
-
-            const iframe = modal.querySelector('iframe[name="RadWindow_Common"]');
-            if (!iframe) return;
-
-            if (lastSeenIframe === iframe) return;
-
-            let iframeDoc = null;
-            try { iframeDoc = iframe.contentDocument || iframe.contentWindow.document; }
-            catch (e) { return; }
-
-            if (!iframeDoc || iframeDoc.readyState !== 'complete' || !iframeDoc.body || iframeDoc.body.children.length === 0) return;
-            if (iframeDoc.querySelectorAll('.RadComboBox').length === 0) return;
-
-            lastSeenIframe = iframe;
-            console.log('Edit modal iframe ready (watcher) — initialising...');
-            setTimeout(() => setupEditModalEstimatorMonitor(iframeDoc), 800);
+        function endSession() {
+            if (s.doc) console.log('Edit modal closed');
+            s.doc = null; s.readyAt = 0; s.initialized = false;
+            s.lastEst = null; s.lastCoord = null; s.busyUntil = 0; s.resync = false;
+            isEditMode = false;
+            userModifiedFields.clear();
         }
 
-        watchInterval = setInterval(checkForModal, 400);
+        function runConfig(est, coord) {
+            // Special-case Coordinator takes priority, same as before
+            if (coord && coordinatorOverrideDatabase[coord]) {
+                console.log('Applying coordinator override for', coord);
+                applyCoordinatorOverride(coord, s.doc);
+            } else if (est) {
+                console.log('Applying estimator config for', est);
+                applyEstimatorConfig(est, s.doc);
+            } else {
+                return false;
+            }
+            s.busyUntil = Date.now() + 1500; // staged writes take ~600-800ms
+            s.resync = true;
+            return true;
+        }
 
-        const fastObserver = new MutationObserver(() => checkForModal());
-        fastObserver.observe(document.body, { childList: true, subtree: false });
+        function tick() {
+            try {
+                const modal = document.querySelector('#RadWindowWrapper_ctl00_ContentPlaceHolder1_RadWindow_Common');
+                const visible = modal && modal.offsetParent !== null && modal.style.display !== 'none';
+                if (!visible) { if (s.doc) endSession(); return; }
+
+                const iframe = modal.querySelector('iframe[name="RadWindow_Common"]');
+                if (!iframe) return;
+
+                let doc = null;
+                try { doc = iframe.contentDocument || iframe.contentWindow.document; }
+                catch (e) { return; }
+                if (!doc || doc.readyState !== 'complete' || !doc.body) return;
+
+                // A new document object = a new modal session, even if the iframe element is reused
+                if (doc !== s.doc) {
+                    endSession();
+                    s.doc = doc;
+                    isEditMode = true;
+                    console.log('Edit modal document detected — new session');
+                }
+
+                if (Date.now() < s.busyUntil) return;
+
+                const est = getComboValue(doc, 'Estimator');
+                if (est === null) return; // not rendered yet; just try again next tick
+                const estDropdown = findParticipantDropdownByLabel(doc, 'Estimator');
+                if (!estDropdown || !isDropdownReady(estDropdown)) return;
+
+                const coordRaw = getComboValue(doc, 'Coordinator');
+                const coord = coordRaw === null ? '' : coordRaw;
+
+                // Let the modal settle briefly before the first apply
+                if (!s.readyAt) { s.readyAt = Date.now(); return; }
+                if (Date.now() - s.readyAt < 600) return;
+
+                // After our own writes finish, take a new baseline without re-triggering
+                if (s.resync) {
+                    s.lastEst = est; s.lastCoord = coord; s.resync = false;
+                    return;
+                }
+
+                if (!s.initialized) {
+                    s.initialized = true;
+                    s.lastEst = est; s.lastCoord = coord;
+                    runConfig(est, coord);
+                    return;
+                }
+
+                // Coordinator changed to a special-case person
+                if (coord !== s.lastCoord && coord && coordinatorOverrideDatabase[coord]) {
+                    s.lastCoord = coord; s.lastEst = est;
+                    runConfig(est, coord);
+                    return;
+                }
+
+                // Estimator changed
+                if (est !== s.lastEst && est) {
+                    s.lastEst = est; s.lastCoord = coord;
+                    if (!estimatorDatabase[est]) {
+                        console.warn('Estimator ID not in estimatorDatabase:', est);
+                        return;
+                    }
+                    runConfig(est, ''); // estimator change should use estimator logic
+                    return;
+                }
+
+                s.lastEst = est; s.lastCoord = coord;
+            } catch (e) {
+                console.error('Modal watcher error:', e);
+            }
+        }
+
+        setInterval(tick, 500);
     }
 
     // ==================== CREATE JOB PAGE ====================
