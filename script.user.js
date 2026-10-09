@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      10.0
+// @version      10.1
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
-// @author       Samuel Browning
+// @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
 // @updateURL    https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/main/script.user.js
 // @downloadURL  https://github.com/SBrowningSERVPRO/TampermonkeyScript/raw/main/script.user.js
@@ -122,6 +122,7 @@
 
         // Chesapeake - Contents
         '161878': { supervisor: { value: '86750', text: 'Team, Chesapeake - Contents' }, jfc: { value: '191444', text: 'Echeverria, Cristal' }, office: 'SERVPRO of Chesapeake' },
+        '202416': { supervisor: { value: '86750', text: 'Team, Chesapeake - Contents' }, jfc: { value: '191444', text: 'Echeverria, Cristal' }, office: 'SERVPRO of Chesapeake' }, //Charles B.
         '141154': { supervisor: { value: '86750', text: 'Team, Chesapeake - Contents' }, jfc: { value: '191444', text: 'Echeverria, Cristal' }, office: 'SERVPRO of Chesapeake' },
 
         // Chesapeake - Recon Team
