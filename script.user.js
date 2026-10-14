@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      10.2
+// @version      10.21
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -40,6 +40,8 @@
     '77219':  { value: '216571', text: 'Fisher, Ebony' },
     '172368': { value: '216571', text: 'Fisher, Ebony' },
     '218021': { value: '216571', text: 'Fisher, Ebony' },
+    '217289': { value: '216571', text: 'Fisher, Ebony' },
+
 
     '6794':   { value: '66515', text: 'Burgess, Cristine' },
     '191444': { value: '66515', text: 'Burgess, Cristine' },
@@ -60,7 +62,7 @@
     const coordinatorOverrideDatabase = {
         '154577': { name: 'Harrison, Anna',        office: 'SERVPRO of Chesterfield' },
         '212037': { name: 'Richardson, Charmaine', office: 'SERVPRO of Arlington' },
-        '216996': { name: 'Dixon, Kayla',          office: 'SERVPRO of Chesapeake' },
+        '219645': { name: 'Bland, Kennedy',          office: 'SERVPRO of Chesapeake' },
     };
 
     const NOT_APPLICABLE = { value: '3347', text: 'Not, Applicable' };
