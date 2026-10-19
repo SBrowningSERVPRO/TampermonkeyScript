@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      10.21
+// @version      10.22
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -61,7 +61,7 @@
     // defaults, and Mit JFC TL is always Burgess, Cristine.
     const coordinatorOverrideDatabase = {
         '154577': { name: 'Harrison, Anna',        office: 'SERVPRO of Chesterfield' },
-        '212037': { name: 'Richardson, Charmaine', office: 'SERVPRO of Arlington' },
+        '216996': { name: 'Dixon, Kayla', office: 'SERVPRO of Arlington' },
         '219645': { name: 'Bland, Kennedy',          office: 'SERVPRO of Chesapeake' },
     };
 
@@ -108,6 +108,7 @@
         '116527': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '77219', text: 'Hubbell, Stacey' }, office: 'SERVPRO of Chesterfield', backOffice: { value: '3347', text: 'Not, Applicable' } },
         // Chesapeake - Team One
         '146894': { supervisor: { value: '151611', text: 'Chesapeake, Team One' }, jfc: { value: '173722', text: 'Jackson, Courtney' }, office: 'SERVPRO of Chesapeake' },
+        '214356': { supervisor: { value: '151611', text: 'Chesapeake, Team One' }, jfc: { value: '219295', text: 'Browning, Jack' }, office: 'SERVPRO of Chesapeake' }, // Chris Lopez
         '101500': { supervisor: { value: '151611', text: 'Chesapeake, Team One' }, jfc: { value: '143694', text: 'Mason, Monica' }, office: 'SERVPRO of Chesapeake' },
         '146895': { supervisor: { value: '151611', text: 'Chesapeake, Team One' }, jfc: { value: '173730', text: 'Moore, Tracy' }, office: 'SERVPRO of Chesapeake' },
         '205298': { supervisor: { value: '151611', text: 'Chesapeake, Team One' }, jfc: { value: '173730', text: 'Moore, Tracy' }, office: 'SERVPRO of Chesapeake' },
