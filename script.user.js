@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      10.22
+// @version      10.23
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -129,17 +129,17 @@
         '141154': { supervisor: { value: '86750', text: 'Team, Chesapeake - Contents' }, jfc: { value: '191444', text: 'Echeverria, Cristal' }, office: 'SERVPRO of Chesapeake' },
 
         // Chesapeake - Recon Team
-        '112796': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '119803': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '145494': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '158327': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '146667': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '146668': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '152487': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '143693': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '201275': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '207480': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '218583': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '218021', text: 'Dabney, Andre' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        '112796': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        '119803': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        '145494': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        '158327': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        '146667': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        '146668': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        '152487': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        '143693': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        '201275': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        '207480': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        '218583': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
 
         // Arlington - Team Arlington
         '177893': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '214744', text: 'Winfree, Tyonna' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },
