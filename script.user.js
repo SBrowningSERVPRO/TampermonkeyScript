@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      10.23
+// @version      10.24
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -28,30 +28,29 @@
 
     // ==================== JFC → MIT JFC TL MAPPING ====================
     const jfcToMitJfcTl = {
-    '154121': { value: '216571', text: 'Fisher, Ebony' },
-    '192726': { value: '216571', text: 'Fisher, Ebony' },
-    '205791': { value: '216571', text: 'Fisher, Ebony' },
-    '178596': { value: '216571', text: 'Fisher, Ebony' },
-    '192734': { value: '216571', text: 'Fisher, Ebony' },
-    '214744': { value: '216571', text: 'Fisher, Ebony' },
-    '211953': { value: '216571', text: 'Fisher, Ebony' },
-    '193188': { value: '216571', text: 'Fisher, Ebony' },
-    '7046':   { value: '216571', text: 'Fisher, Ebony' },
-    '77219':  { value: '216571', text: 'Fisher, Ebony' },
-    '172368': { value: '216571', text: 'Fisher, Ebony' },
-    '218021': { value: '216571', text: 'Fisher, Ebony' },
-    '217289': { value: '216571', text: 'Fisher, Ebony' },
+        '154121': { value: '216571', text: 'Fisher, Ebony' },     // Luce, Ashlee
+        '192726': { value: '216571', text: 'Fisher, Ebony' },
+        '205791': { value: '216571', text: 'Fisher, Ebony' },     // Greene, Dawn
+        '178596': { value: '216571', text: 'Fisher, Ebony' },     // Hanchey, Katelyn
+        '192734': { value: '216571', text: 'Fisher, Ebony' },     // Carden, Valerie
+        '214744': { value: '216571', text: 'Fisher, Ebony' },     // Winfree, Tyonna
+        '211953': { value: '216571', text: 'Fisher, Ebony' },     // Harrell, Madelyn
+        '193188': { value: '216571', text: 'Fisher, Ebony' },     // Ange, Diane
+        '7406':   { value: '216571', text: 'Fisher, Ebony' },     // Stroud, Kathryn (fixed from 7046)
+        '77219':  { value: '216571', text: 'Fisher, Ebony' },     // Hubbell, Stacey
+        '172368': { value: '216571', text: 'Fisher, Ebony' },
+        '218021': { value: '216571', text: 'Fisher, Ebony' },
+        '217289': { value: '216571', text: 'Fisher, Ebony' },     // Weaver, Haley
 
-
-    '6794':   { value: '66515', text: 'Burgess, Cristine' },
-    '191444': { value: '66515', text: 'Burgess, Cristine' },
-    '211651': { value: '66515', text: 'Burgess, Cristine' },
-    '173722': { value: '66515', text: 'Burgess, Cristine' },
-    '143694': { value: '66515', text: 'Burgess, Cristine' },
-    '173730': { value: '66515', text: 'Burgess, Cristine' },
-    '177870': { value: '66515', text: 'Burgess, Cristine' },
-    '168201': { value: '66515', text: 'Burgess, Cristine' }
-};
+        '6794':   { value: '66515', text: 'Burgess, Cristine' },  // Parker, Sarah
+        '191444': { value: '66515', text: 'Burgess, Cristine' },  // Echeverria, Cristal
+        '211651': { value: '66515', text: 'Burgess, Cristine' },  // Browning, Samuel
+        '173722': { value: '66515', text: 'Burgess, Cristine' },  // Jackson, Courtney
+        '143694': { value: '66515', text: 'Burgess, Cristine' },  // Mason, Monica
+        '173730': { value: '66515', text: 'Burgess, Cristine' },  // Moore, Tracy
+        '177870': { value: '66515', text: 'Burgess, Cristine' },  // Riaz, Saud
+        '168201': { value: '66515', text: 'Burgess, Cristine' }
+    };
     // ====================================================================
 
     // ==================== COORDINATOR OVERRIDE MAPPING ====================
@@ -60,100 +59,122 @@
     // every internal participant field gets that Coordinator's home-office
     // defaults, and Mit JFC TL is always Burgess, Cristine.
     const coordinatorOverrideDatabase = {
-        '154577': { name: 'Harrison, Anna',        office: 'SERVPRO of Chesterfield' },
-        '216996': { name: 'Dixon, Kayla', office: 'SERVPRO of Arlington' },
-        '219645': { name: 'Bland, Kennedy',          office: 'SERVPRO of Chesapeake' },
+        '154577': { name: 'Harrison, Anna', office: 'SERVPRO of Chesterfield' },
+        '217422': { name: 'Green, Dominique', office: 'SERVPRO of Arlington' },
+        '219645': { name: 'Bland, Kennedy', office: 'SERVPRO of Chesapeake' },
     };
 
     const NOT_APPLICABLE = { value: '3347', text: 'Not, Applicable' };
     const MIT_JFC_TL_BURGESS = { value: '66515', text: 'Burgess, Cristine' };
     // ====================================================================
 
+    // Large Loss supervisor
+    const TEAM_EXTREME = { value: '25561', text: 'Team, Extreme' };
+
+    // Shared recon back-office values
+    const BO_NA = { value: '3347', text: 'Not, Applicable' };
+    const BO_RECON_ARL = { value: '179364', text: 'Team, Recon Arlington - Back Office' };
+
     // Estimator database with supervisor and JFC mappings
+    // Verified against Teams List dated 10.30.2026
     const estimatorDatabase = {
-        // Chesterfield - Team One
-        '2071':   { supervisor: { value: '21779', text: 'Team, One' }, jfc: { value: '154121', text: 'Luce, Ashlee' }, office: 'SERVPRO of Chesterfield' },
-        '80083':  { supervisor: { value: '21779', text: 'Team, One' }, jfc: { value: '154121', text: 'Luce, Ashlee' }, office: 'SERVPRO of Chesterfield' },
-        '11138':  { supervisor: { value: '21779', text: 'Team, One' }, jfc: { value: '191444', text: 'Echeverria, Cristal' }, office: 'SERVPRO of Chesterfield' },
-        '2058':   { supervisor: { value: '21779', text: 'Team, One' }, jfc: { value: '205791', text: 'Greene, Dawn' }, office: 'SERVPRO of Chesterfield' },
-        '28458':  { supervisor: { value: '21779', text: 'Team, One' }, jfc: { value: '205791', text: 'Greene, Dawn' }, office: 'SERVPRO of Chesterfield' },
-        '80068':  { supervisor: { value: '21779', text: 'Team, One' }, jfc: { value: '178596', text: 'Hanchey, Katelyn' }, office: 'SERVPRO of Chesterfield' },
+        // ===== CHESTERFIELD =====
+        // Team One (Phil Griffith)
+        '2071':   { supervisor: { value: '21779', text: 'Team, One' }, jfc: { value: '154121', text: 'Luce, Ashlee' }, office: 'SERVPRO of Chesterfield' },        // Crenshaw, Justin
+        '80083':  { supervisor: { value: '21779', text: 'Team, One' }, jfc: { value: '154121', text: 'Luce, Ashlee' }, office: 'SERVPRO of Chesterfield' },        // McClellan, Hampton
+        '11138':  { supervisor: { value: '21779', text: 'Team, One' }, jfc: { value: '191444', text: 'Echeverria, Cristal' }, office: 'SERVPRO of Chesterfield' }, // Slaasted, Evan
+        '2058':   { supervisor: { value: '21779', text: 'Team, One' }, jfc: { value: '205791', text: 'Greene, Dawn' }, office: 'SERVPRO of Chesterfield' },        // Ballas, Justin
+        '28458':  { supervisor: { value: '21779', text: 'Team, One' }, jfc: { value: '205791', text: 'Greene, Dawn' }, office: 'SERVPRO of Chesterfield' },        // Snyder, Matthew
+        '80068':  { supervisor: { value: '21779', text: 'Team, One' }, jfc: { value: '178596', text: 'Hanchey, Katelyn' }, office: 'SERVPRO of Chesterfield' },    // Bahen, Nathan
 
-        // Chesterfield - Team Three
-        '24446':  { supervisor: { value: '21781', text: 'Team, Three' }, jfc: { value: '178596', text: 'Hanchey, Katelyn' }, office: 'SERVPRO of Chesterfield' },
-        '116116': { supervisor: { value: '21781', text: 'Team, Three' }, jfc: { value: '205791', text: 'Greene, Dawn' }, office: 'SERVPRO of Chesterfield' },
-        '20779':  { supervisor: { value: '21781', text: 'Team, Three' }, jfc: { value: '192734', text: 'Carden, Valerie' }, office: 'SERVPRO of Chesterfield' },
-        '115061': { supervisor: { value: '21781', text: 'Team, Three' }, jfc: { value: '6794', text: 'Parker, Sarah' }, office: 'SERVPRO of Chesterfield' },
-        '115064': { supervisor: { value: '21781', text: 'Team, Three' }, jfc: { value: '211953', text: 'Harrell, Madelyn' }, office: 'SERVPRO of Chesterfield' },
-        '145240': { supervisor: { value: '21781', text: 'Team, Three' }, jfc: { value: '211953', text: 'Harrell, Madelyn' }, office: 'SERVPRO of Chesterfield' },
+        // Team Three (Matthew Harding)
+        '24446':  { supervisor: { value: '21781', text: 'Team, Three' }, jfc: { value: '178596', text: 'Hanchey, Katelyn' }, office: 'SERVPRO of Chesterfield' },  // Fuentes-Bonilla, Nancy
+        '20779':  { supervisor: { value: '21781', text: 'Team, Three' }, jfc: { value: '192734', text: 'Carden, Valerie' }, office: 'SERVPRO of Chesterfield' },   // Fleming, Chris
+        '115061': { supervisor: { value: '21781', text: 'Team, Three' }, jfc: { value: '6794', text: 'Parker, Sarah' }, office: 'SERVPRO of Chesterfield' },       // Padilla, Paola
+        '115064': { supervisor: { value: '21781', text: 'Team, Three' }, jfc: { value: '211953', text: 'Harrell, Madelyn' }, office: 'SERVPRO of Chesterfield' },  // Leon Carrasco, Andres
+        '145240': { supervisor: { value: '21781', text: 'Team, Three' }, jfc: { value: '211953', text: 'Harrell, Madelyn' }, office: 'SERVPRO of Chesterfield' },  // Abdullah, Ghazi
 
-        // Chesterfield - Contents Team
-        '195592':  { supervisor: { value: '192286', text: 'Team, Contents - Chesterfield' }, jfc: { value: '211651', text: 'Browning, Samuel' }, office: 'SERVPRO of Chesterfield' },
-        '192791': { supervisor: { value: '192286', text: 'Team, Contents - Chesterfield' }, jfc: { value: '211651', text: 'Browning, Samuel' }, office: 'SERVPRO of Chesterfield' },
-        '17879': { supervisor: { value: '192286', text: 'Team, Contents - Chesterfield' }, jfc: { value: '211651', text: 'Browning, Samuel' }, office: 'SERVPRO of Chesterfield' },
+        // Contents
+        '195592': { supervisor: { value: '192286', text: 'Team, Contents - Chesterfield' }, jfc: { value: '211651', text: 'Browning, Samuel' }, office: 'SERVPRO of Chesterfield' }, // Romano, John
+        '17879':  { supervisor: { value: '192286', text: 'Team, Contents - Chesterfield' }, jfc: { value: '211651', text: 'Browning, Samuel' }, office: 'SERVPRO of Chesterfield' }, // Genest, Brian
 
-        // Chesterfield - Direct Sales
-        '2099':   { supervisor: { value: '10803', text: 'Direct, Sales' }, jfc: { value: '6794', text: 'Parker, Sarah' }, office: 'SERVPRO of Chesterfield' },
+        // Direct Sales
+        '2099':   { supervisor: { value: '10803', text: 'Direct, Sales' }, jfc: { value: '6794', text: 'Parker, Sarah' }, office: 'SERVPRO of Chesterfield' },     // Morgan, Robert (Bobby)
 
-        // Chesterfield - Recon Team
-        '146617': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '193188', text: 'Ange, Diane' }, office: 'SERVPRO of Chesterfield', backOffice: { value: '3347', text: 'Not, Applicable' } },
-        '77099':  { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '193188', text: 'Ange, Diane' }, office: 'SERVPRO of Chesterfield', backOffice: { value: '3347', text: 'Not, Applicable' } },
-        '154915': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '193188', text: 'Ange, Diane' }, office: 'SERVPRO of Chesterfield', backOffice: { value: '3347', text: 'Not, Applicable' } },
-        '213905': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '193188', text: 'Ange, Diane' }, office: 'SERVPRO of Chesterfield', backOffice: { value: '3347', text: 'Not, Applicable' } },
-        '162998': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '7046', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Chesterfield', backOffice: { value: '3347', text: 'Not, Applicable' } },
-        '212138': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '7046', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Chesterfield', backOffice: { value: '3347', text: 'Not, Applicable' } },
-        '158443': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '77219', text: 'Hubbell, Stacey' }, office: 'SERVPRO of Chesterfield', backOffice: { value: '3347', text: 'Not, Applicable' } },
-        '171582': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '77219', text: 'Hubbell, Stacey' }, office: 'SERVPRO of Chesterfield', backOffice: { value: '3347', text: 'Not, Applicable' } },
-        '173424': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '193188', text: 'Ange, Diane' }, office: 'SERVPRO of Chesterfield', backOffice: { value: '3347', text: 'Not, Applicable' } },
-        '116527': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '77219', text: 'Hubbell, Stacey' }, office: 'SERVPRO of Chesterfield', backOffice: { value: '3347', text: 'Not, Applicable' } },
-        // Chesapeake - Team One
-        '146894': { supervisor: { value: '151611', text: 'Chesapeake, Team One' }, jfc: { value: '173722', text: 'Jackson, Courtney' }, office: 'SERVPRO of Chesapeake' },
-        '214356': { supervisor: { value: '151611', text: 'Chesapeake, Team One' }, jfc: { value: '219295', text: 'Browning, Jack' }, office: 'SERVPRO of Chesapeake' }, // Chris Lopez
-        '101500': { supervisor: { value: '151611', text: 'Chesapeake, Team One' }, jfc: { value: '143694', text: 'Mason, Monica' }, office: 'SERVPRO of Chesapeake' },
-        '146895': { supervisor: { value: '151611', text: 'Chesapeake, Team One' }, jfc: { value: '173730', text: 'Moore, Tracy' }, office: 'SERVPRO of Chesapeake' },
-        '205298': { supervisor: { value: '151611', text: 'Chesapeake, Team One' }, jfc: { value: '173730', text: 'Moore, Tracy' }, office: 'SERVPRO of Chesapeake' },
-        '211271': { supervisor: { value: '151611', text: 'Chesapeake, Team One' }, jfc: { value: '173730', text: 'Moore, Tracy' }, office: 'SERVPRO of Chesapeake' },
+        // Team Extreme - Large Loss (Thomas Bahen)
+        '6597':   { supervisor: TEAM_EXTREME, jfc: { value: '6794', text: 'Parker, Sarah' }, office: 'SERVPRO of Chesterfield' },                              // Cover, David
+        '20777':  { supervisor: TEAM_EXTREME, jfc: { value: '6794', text: 'Parker, Sarah' }, office: 'SERVPRO of Chesterfield' },                              // Poole, Tucker
+        '80099':  { supervisor: TEAM_EXTREME, jfc: { value: '6794', text: 'Parker, Sarah' }, office: 'SERVPRO of Chesterfield' },                              // York, Brooks
+        '81288':  { supervisor: TEAM_EXTREME, jfc: { value: '7406', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Chesterfield', backOffice: BO_NA },        // Goldsberry, Andrew
+        '212813': { supervisor: TEAM_EXTREME, jfc: { value: '7406', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Chesterfield', backOffice: BO_NA },        // Steele, John
+        '152318': { supervisor: TEAM_EXTREME, jfc: { value: '7406', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Chesterfield', backOffice: BO_NA },        // Pruitt, Dakota
+        '141566': { supervisor: TEAM_EXTREME, jfc: { value: '7406', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Chesterfield', backOffice: BO_NA },        // Fleenor, Brent
 
-        // Chesapeake - Team Two
-        '3762':   { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '192734', text: 'Carden, Valerie' }, office: 'SERVPRO of Chesapeake' },
-        '218843':   { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '173730', text: 'Moore, Tracy' }, office: 'SERVPRO of Chesapeake' },// Dyland Reynolds
-        '173718': { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '143694', text: 'Mason, Monica' }, office: 'SERVPRO of Chesapeake' },
-        '90653':  { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '173722', text: 'Jackson, Courtney' }, office: 'SERVPRO of Chesapeake' },
-        '95381':  { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '173730', text: 'Moore, Tracy' }, office: 'SERVPRO of Chesapeake' },
-        '144699': { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '173730', text: 'Moore, Tracy' }, office: 'SERVPRO of Chesapeake' },
-        '211361': { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '173722', text: 'Jackson, Courtney' }, office: 'SERVPRO of Chesapeake' },
+        // Team Rec Chesterfield (Wally Jubber) - Estimators
+        '146617': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '193188', text: 'Ange, Diane' }, office: 'SERVPRO of Chesterfield', backOffice: BO_NA },     // Aubertin, Donovan
+        '213905': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '193188', text: 'Ange, Diane' }, office: 'SERVPRO of Chesterfield', backOffice: BO_NA },     // Russell, Mark
+        '173424': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '193188', text: 'Ange, Diane' }, office: 'SERVPRO of Chesterfield', backOffice: BO_NA },     // Jackson, Malachi
+        // Team Rec Chesterfield - Project Managers
+        '162998': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '7406', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Chesterfield', backOffice: BO_NA },   // Profatylo, Pavlo
+        '219510': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '7406', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Chesterfield', backOffice: BO_NA },   // Huber, Brian
+        '219950': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '7406', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Chesterfield', backOffice: BO_NA },   // Ballinger Carlton, Tate
+        '158443': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '77219', text: 'Hubbell, Stacey' }, office: 'SERVPRO of Chesterfield', backOffice: BO_NA },  // Pernell, Jeffrey
+        '215701': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '77219', text: 'Hubbell, Stacey' }, office: 'SERVPRO of Chesterfield', backOffice: BO_NA },  // Ballard, Evan
+        '218006': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '77219', text: 'Hubbell, Stacey' }, office: 'SERVPRO of Chesterfield', backOffice: BO_NA },  // Van De Veerdonk, Dustin
+        '219957': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '77219', text: 'Hubbell, Stacey' }, office: 'SERVPRO of Chesterfield', backOffice: BO_NA },  // Almoney, Bryant
+        '220124': { supervisor: { value: '21782', text: 'Team, Rec Chesterfield' }, jfc: { value: '77219', text: 'Hubbell, Stacey' }, office: 'SERVPRO of Chesterfield', backOffice: BO_NA },  // Breckley, Matthew
 
-        // Chesapeake - Contents
-        '161878': { supervisor: { value: '86750', text: 'Team, Chesapeake - Contents' }, jfc: { value: '191444', text: 'Echeverria, Cristal' }, office: 'SERVPRO of Chesapeake' },
-        '202415': { supervisor: { value: '86750', text: 'Team, Chesapeake - Contents' }, jfc: { value: '191444', text: 'Echeverria, Cristal' }, office: 'SERVPRO of Chesapeake' }, //Charles B.
-        '141154': { supervisor: { value: '86750', text: 'Team, Chesapeake - Contents' }, jfc: { value: '191444', text: 'Echeverria, Cristal' }, office: 'SERVPRO of Chesapeake' },
+        // ===== CHESAPEAKE / NEWPORT NEWS =====
+        // Team One (Demetrius Perry)
+        '146894': { supervisor: { value: '151611', text: 'Chesapeake, Team One' }, jfc: { value: '173730', text: 'Moore, Tracy' }, office: 'SERVPRO of Chesapeake' },     // Clapp, Steven
+        '101500': { supervisor: { value: '151611', text: 'Chesapeake, Team One' }, jfc: { value: '143694', text: 'Mason, Monica' }, office: 'SERVPRO of Chesapeake' },    // Williams, Dequan
+        '211271': { supervisor: { value: '151611', text: 'Chesapeake, Team One' }, jfc: { value: '173730', text: 'Moore, Tracy' }, office: 'SERVPRO of Chesapeake' },     // Meehan, Charles
+        '214356': { supervisor: { value: '151611', text: 'Chesapeake, Team One' }, jfc: { value: '219295', text: 'Browning, Jack' }, office: 'SERVPRO of Chesapeake' },   // Lopez, Christopher
+        '173740': { supervisor: { value: '151611', text: 'Chesapeake, Team One' }, jfc: { value: '219295', text: 'Browning, Jack' }, office: 'SERVPRO of Chesapeake' },   // Davis, Sean  // Team TBD per list
 
-        // Chesapeake - Recon Team
-        '112796': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '119803': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '145494': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '158327': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '146667': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '146668': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '152487': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '143693': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '201275': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '207480': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '218583': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        // Team Two (Kevin Bernard)
+        '2061':   { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '173722', text: 'Jackson, Courtney' }, office: 'SERVPRO of Chesapeake' }, // Bernard, Kevin
+        '3762':   { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '192734', text: 'Carden, Valerie' }, office: 'SERVPRO of Chesapeake' },   // Proffitt, Matthew
+        '173718': { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '173730', text: 'Moore, Tracy' }, office: 'SERVPRO of Chesapeake' },      // Luther, Susanne
+        '211361': { supervisor: { value: '173947', text: 'Chesapeake, Team Two' }, jfc: { value: '143694', text: 'Mason, Monica' }, office: 'SERVPRO of Chesapeake' },     // Price, Brittany
 
-        // Arlington - Team Arlington
-        '177893': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '214744', text: 'Winfree, Tyonna' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },
-        '177894': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '214744', text: 'Winfree, Tyonna' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },
-        '193238': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '154121', text: 'Luce, Ashlee' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },
-        '214587': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '177870', text: 'Riaz, Saud' }, office: 'SERVPRO of Arlington', backOffice: { value: '179362', text: 'Team, Contents - Arlington' } },
-        '217215': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '214744', text: 'Winfree, Tyonna' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },
+        // Contents
+        '161878': { supervisor: { value: '86750', text: 'Team, Chesapeake - Contents' }, jfc: { value: '191444', text: 'Echeverria, Cristal' }, office: 'SERVPRO of Chesapeake' }, // Kimbrough, Brandi
+        '141154': { supervisor: { value: '86750', text: 'Team, Chesapeake - Contents' }, jfc: { value: '191444', text: 'Echeverria, Cristal' }, office: 'SERVPRO of Chesapeake' }, // Romero, Marian
+        '202415': { supervisor: { value: '86750', text: 'Team, Chesapeake - Contents' }, jfc: { value: '191444', text: 'Echeverria, Cristal' }, office: 'SERVPRO of Chesapeake' }, // Borrall, Charles
 
-        // Arlington - Recon Team
-        '190914': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '193188', text: 'Ange, Diane' }, office: 'SERVPRO of Arlington', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '204894': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '193188', text: 'Ange, Diane' }, office: 'SERVPRO of Arlington', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '177896': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '7046', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Arlington', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '177898': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '7046', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Arlington', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
-        '191446': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '77219', text: 'Hubbell, Stacey' }, office: 'SERVPRO of Arlington', backOffice: { value: '179364', text: 'Team, Recon Arlington - Back Office' } },
+        // Team Rec Chesapeake (Ray Virgili) - Estimators
+        '112796': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: BO_RECON_ARL }, // Virgili, Raymond
+        '119803': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: BO_RECON_ARL }, // Wood, Stephanie
+        '145494': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: BO_RECON_ARL }, // Grizzle, Lorraine
+        '158327': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: BO_RECON_ARL }, // Mitchell, Kelly
+        '218583': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: BO_RECON_ARL }, // Preston, Jason
+        // Team Rec Chesapeake - Project Managers
+        '146667': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: BO_RECON_ARL }, // Lane, Michael
+        '143693': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: BO_RECON_ARL }, // Wilkes, Brittney
+        '201275': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: BO_RECON_ARL }, // Brinn, Timothy
+        '207480': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: BO_RECON_ARL }, // Ketcherside, Max
+        '217272': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: BO_RECON_ARL }, // Bright, William (Blue)
+        '218494': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: BO_RECON_ARL }, // Karanovich, Carly
+        '218622': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: BO_RECON_ARL }, // De Jesus, Genesis
+        '218845': { supervisor: { value: '89266', text: 'Team, Rec Chesapeake' }, jfc: { value: '217289', text: 'Weaver, Haley' }, office: 'SERVPRO of Chesapeake', backOffice: BO_RECON_ARL }, // Weather, Anthony
+
+        // ===== ARLINGTON =====
+        // Team Water
+        '177893': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '214744', text: 'Winfree, Tyonna' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },               // Fernandez, Alexis
+        '177894': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '214744', text: 'Winfree, Tyonna' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },               // Khalaf, Qusay
+        '193238': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '154121', text: 'Luce, Ashlee' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },                  // Lucas, Teddy
+        '217215': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '214744', text: 'Winfree, Tyonna' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },               // Rodriguez, Carlos
+        // Team Contents
+        '214587': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '177870', text: 'Riaz, Saud' }, office: 'SERVPRO of Arlington', backOffice: { value: '179362', text: 'Team, Contents - Arlington' } },     // Hill, Anizja
+
+        // Team Rec Arlington (Jeremy McCallister)
+        '190914': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '193188', text: 'Ange, Diane' }, office: 'SERVPRO of Arlington', backOffice: BO_RECON_ARL },     // Albrich, Al
+        '204894': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '193188', text: 'Ange, Diane' }, office: 'SERVPRO of Arlington', backOffice: BO_RECON_ARL },     // Guy, Daniel
+        '220119': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '193188', text: 'Ange, Diane' }, office: 'SERVPRO of Arlington', backOffice: BO_RECON_ARL },     // Vinson, Royce
+        '177898': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '7406', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Arlington', backOffice: BO_RECON_ARL }, // Sines, Jason
+        '216489': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '7406', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Arlington', backOffice: BO_RECON_ARL }, // Dunlap, Stephen
+        '220118': { supervisor: { value: '218606', text: 'Team, Rec Arlington' }, jfc: { value: '7406', text: 'Stroud, Kathryn' }, office: 'SERVPRO of Arlington', backOffice: BO_RECON_ARL }, // Orlowski, Shane
     };
 
     const officeConfigs = {
