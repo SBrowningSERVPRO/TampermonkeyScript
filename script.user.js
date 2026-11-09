@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SERVPRO Office Auto-Fill
 // @namespace    http://tampermonkey.net/
-// @version      10.24
+// @version      10.27
 // @description  Auto-fill participant dropdowns based on selected SERVPRO office and estimator
 // @author       Samuel Browning (with fixes)
 // @match        https://servpro.ngsapps.net/*
@@ -29,7 +29,7 @@
     // ==================== JFC → MIT JFC TL MAPPING ====================
     const jfcToMitJfcTl = {
         '154121': { value: '216571', text: 'Fisher, Ebony' },     // Luce, Ashlee
-        '192726': { value: '216571', text: 'Fisher, Ebony' },
+        '192726': { value: '216571', text: 'Fisher, Ebony' },     // Oden-McIntyre, Lolita
         '205791': { value: '216571', text: 'Fisher, Ebony' },     // Greene, Dawn
         '178596': { value: '216571', text: 'Fisher, Ebony' },     // Hanchey, Katelyn
         '192734': { value: '216571', text: 'Fisher, Ebony' },     // Carden, Valerie
@@ -53,19 +53,68 @@
     };
     // ====================================================================
 
+    const NOT_APPLICABLE = { value: '3347', text: 'Not, Applicable' };
+    const MIT_JFC_TL_BURGESS = { value: '66515', text: 'Burgess, Cristine' };
+    const DIRECT_SALES = { value: '10803', text: 'Direct, Sales' };
+
     // ==================== COORDINATOR OVERRIDE MAPPING ====================
     // Some Coordinators are selected directly (no Estimator chosen at all).
-    // For these, Estimator and Supervisor must always be "Not Applicable",
-    // every internal participant field gets that Coordinator's home-office
-    // defaults, and Mit JFC TL is always Burgess, Cristine.
+    // For these, Estimator is always "Not Applicable".
+    //
+    // Optional per-entry fields:
+    //   supervisor            - Supervisor to set (default: Not Applicable)
+    //   mitJfcTl              - Mit JFC TL to set (default: Burgess, Cristine)
+    //   office                - home office whose defaults fill the remaining
+    //                           internal fields; null = leave those fields alone
+    //   onlyWithoutEstimator  - only trigger when Estimator is blank or Not
+    //                           Applicable. Needed for coordinators who are ALSO
+    //                           an estimator's normal JFC, so picking that
+    //                           estimator doesn't get wiped by the override.
     const coordinatorOverrideDatabase = {
         '154577': { name: 'Harrison, Anna', office: 'SERVPRO of Chesterfield' },
         '217422': { name: 'Green, Dominique', office: 'SERVPRO of Arlington' },
         '219645': { name: 'Bland, Kennedy', office: 'SERVPRO of Chesapeake' },
+
+        // Direct Sales jobs coordinated by Lolita (no estimator).
+        // Lolita is also Lucas, Teddy's JFC, hence onlyWithoutEstimator.
+        '192726': {
+            name: 'Oden-McIntyre, Lolita',
+            office: null,
+            supervisor: DIRECT_SALES,
+            mitJfcTl: jfcToMitJfcTl['192726'], // Fisher, Ebony
+            onlyWithoutEstimator: true,
+        },
     };
 
-    const NOT_APPLICABLE = { value: '3347', text: 'Not, Applicable' };
-    const MIT_JFC_TL_BURGESS = { value: '66515', text: 'Burgess, Cristine' };
+    // Decide whether a coordinator override should fire given the current Estimator value
+    function shouldApplyCoordinatorOverride(coordinatorValue, estimatorValue) {
+        const data = coordinatorOverrideDatabase[coordinatorValue];
+        if (!data) return false;
+        if (data.onlyWithoutEstimator) {
+            return !estimatorValue || estimatorValue === NOT_APPLICABLE.value;
+        }
+        return true;
+    }
+
+    // ==================== SUPERVISOR OVERRIDE TRIGGERS ====================
+    // Picking one of these Supervisors (with no Estimator) runs the linked
+    // coordinator override, which also fills in the Coordinator itself.
+    // Estimators whose own supervisor is Direct Sales (e.g. Morgan, Bobby)
+    // are unaffected because the trigger only fires with no Estimator.
+    const supervisorOverrideTriggers = {
+        [DIRECT_SALES.value]: '192726', // Direct, Sales -> Oden-McIntyre, Lolita
+    };
+
+    function getSupervisorTriggeredCoordinator(supervisorValue, estimatorValue) {
+        const coord = supervisorOverrideTriggers[supervisorValue];
+        if (!coord) return null;
+        if (estimatorValue && estimatorValue !== NOT_APPLICABLE.value) return null;
+        return coord;
+    }
+
+    // While an override is writing fields, ignore the change events it causes
+    // (prevents the Coordinator/Supervisor monitors from re-triggering in a loop)
+    let overrideBusyUntil = 0;
     // ====================================================================
 
     // Large Loss supervisor
@@ -163,7 +212,7 @@
         // Team Water
         '177893': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '214744', text: 'Winfree, Tyonna' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },               // Fernandez, Alexis
         '177894': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '214744', text: 'Winfree, Tyonna' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },               // Khalaf, Qusay
-        '193238': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '154121', text: 'Luce, Ashlee' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },                  // Lucas, Teddy
+        '193238': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '192726', text: 'Oden-McIntyre, Lolita' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },                  // Lucas, Teddy
         '217215': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '214744', text: 'Winfree, Tyonna' }, office: 'SERVPRO of Arlington', backOffice: { value: '179363', text: 'Team, Water' } },               // Rodriguez, Carlos
         // Team Contents
         '214587': { supervisor: { value: '177988', text: 'Arlington, Team' }, jfc: { value: '177870', text: 'Riaz, Saud' }, office: 'SERVPRO of Arlington', backOffice: { value: '179362', text: 'Team, Contents - Arlington' } },     // Hill, Anizja
@@ -414,9 +463,9 @@
             // Stage 5: Remaining office-wide fields.
             // Always run this (not just in edit mode) — on the Create Job page these
             // fields are normally seeded once by the Office dropdown, but if a
-            // Coordinator override (Harrison/Richardson/Price) previously filled them
-            // with a *different* office's defaults, changing the Estimator afterward
-            // needs to re-sync everything to the newly selected estimator's office.
+            // Coordinator override previously filled them with a *different*
+            // office's defaults, changing the Estimator afterward needs to
+            // re-sync everything to the newly selected estimator's office.
             if (officeConfig) {
                 setTimeout(() => {
                     participantDropdowns.forEach(dropdown => {
@@ -445,43 +494,58 @@
     }
 
     // ==================== APPLY COORDINATOR OVERRIDE ====================
-    // Triggered when Coordinator is one of the special-case people (Harrison, Anna /
-    // Richardson, Charmaine / Price, Sunni). These are selected directly without an
-    // Estimator, so Estimator + Supervisor are forced to Not Applicable, every other
-    // internal participant field gets that person's home-office defaults, and
-    // Mit JFC TL is always Burgess, Cristine.
+    // Triggered when Coordinator is one of the special-case people in
+    // coordinatorOverrideDatabase. Estimator is forced to Not Applicable,
+    // Supervisor and Mit JFC TL come from the entry (or the N/A / Burgess
+    // defaults), and if the entry has an office, every other internal
+    // participant field gets that office's defaults.
 
     function applyCoordinatorOverride(coordinatorValue, context = document) {
         const overrideData = coordinatorOverrideDatabase[coordinatorValue];
         if (!overrideData) return;
 
+        const supervisor = overrideData.supervisor || NOT_APPLICABLE;
+        const mitJfcTl = overrideData.mitJfcTl || MIT_JFC_TL_BURGESS;
+
+        overrideBusyUntil = Date.now() + 1500;
+
         waitForDropdownsReady(context, () => {
-            // Stage 1: Estimator -> Not Applicable
+            overrideBusyUntil = Date.now() + 1500; // staged writes finish ~650ms later
+
+            // Stage 1: Estimator -> Not Applicable, Coordinator -> this person
+            // (Coordinator is set here so a Supervisor-triggered override fills it in)
             const estimatorDropdown = findParticipantDropdownByLabel(context, 'Estimator');
             if (estimatorDropdown) {
                 setDropdownValue(estimatorDropdown, NOT_APPLICABLE.value, NOT_APPLICABLE.text, true);
             }
+            const coordinatorDropdown = findParticipantDropdownByLabel(context, 'Coordinator');
+            if (coordinatorDropdown) {
+                const cur = getCurrentDropdownValue(coordinatorDropdown);
+                if (!cur || cur.value !== coordinatorValue) {
+                    setDropdownValue(coordinatorDropdown, coordinatorValue, overrideData.name, true);
+                }
+            }
 
-            // Stage 2: Supervisor -> Not Applicable
+            // Stage 2: Supervisor
             setTimeout(() => {
                 const supervisorDropdown = findParticipantDropdownByLabel(context, 'Supervisor');
                 if (supervisorDropdown) {
-                    setDropdownValue(supervisorDropdown, NOT_APPLICABLE.value, NOT_APPLICABLE.text, true);
+                    setDropdownValue(supervisorDropdown, supervisor.value, supervisor.text, true);
                 }
             }, 150);
 
-            // Stage 3: Mit JFC TL -> Burgess, Cristine
+            // Stage 3: Mit JFC TL
             setTimeout(() => {
                 const mitDropdown = findParticipantDropdownByLabel(context, 'Mit JFC TL');
                 if (mitDropdown) {
-                    setDropdownValue(mitDropdown, MIT_JFC_TL_BURGESS.value, MIT_JFC_TL_BURGESS.text, true);
+                    setDropdownValue(mitDropdown, mitJfcTl.value, mitJfcTl.text, true);
                 }
             }, 300);
 
             // Stage 4: Remaining internal participant fields -> home-office defaults
-            const officeConfig = officeConfigs[overrideData.office];
-            if (officeConfig) {
-                setTimeout(() => {
+            const officeConfig = overrideData.office ? officeConfigs[overrideData.office] : null;
+            setTimeout(() => {
+                if (officeConfig) {
                     const participantDropdowns = context.querySelectorAll('div[id*="EstimatorComboBox"].RadComboBox, div[id*="Estimator"].RadComboBox');
                     participantDropdowns.forEach(dropdown => {
                         if (isCompensationPlanDropdown(dropdown)) return;
@@ -499,13 +563,13 @@
                         const s = officeConfig[label];
                         setDropdownValue(dropdown, s.value, s.text, true);
                     });
+                }
 
-                    // On the create-job page also reset external participant defaults
-                    if (context === document) {
-                        setTimeout(() => setExternalParticipantDefaults(), 200);
-                    }
-                }, 450);
-            }
+                // On the create-job page also reset external participant defaults
+                if (context === document) {
+                    setTimeout(() => setExternalParticipantDefaults(), 200);
+                }
+            }, 450);
         });
     }
 
@@ -535,6 +599,7 @@
             initialized: false, // baseline taken / initial config applied
             lastEst: null,
             lastCoord: null,
+            lastSup: null,
             busyUntil: 0,       // ignore changes caused by our own writes
             resync: false
         };
@@ -542,14 +607,14 @@
         function endSession() {
             if (s.doc) console.log('Edit modal closed');
             s.doc = null; s.readyAt = 0; s.initialized = false;
-            s.lastEst = null; s.lastCoord = null; s.busyUntil = 0; s.resync = false;
+            s.lastEst = null; s.lastCoord = null; s.lastSup = null; s.busyUntil = 0; s.resync = false;
             isEditMode = false;
             userModifiedFields.clear();
         }
 
         function runConfig(est, coord) {
-            // Special-case Coordinator takes priority, same as before
-            if (coord && coordinatorOverrideDatabase[coord]) {
+            // Special-case Coordinator takes priority (when its conditions are met)
+            if (coord && shouldApplyCoordinatorOverride(coord, est)) {
                 console.log('Applying coordinator override for', coord);
                 applyCoordinatorOverride(coord, s.doc);
             } else if (est) {
@@ -595,33 +660,47 @@
                 const coordRaw = getComboValue(doc, 'Coordinator');
                 const coord = coordRaw === null ? '' : coordRaw;
 
+                const supRaw = getComboValue(doc, 'Supervisor');
+                const sup = supRaw === null ? '' : supRaw;
+
                 // Let the modal settle briefly before the first apply
                 if (!s.readyAt) { s.readyAt = Date.now(); return; }
                 if (Date.now() - s.readyAt < 600) return;
 
                 // After our own writes finish, take a new baseline without re-triggering
                 if (s.resync) {
-                    s.lastEst = est; s.lastCoord = coord; s.resync = false;
+                    s.lastEst = est; s.lastCoord = coord; s.lastSup = sup; s.resync = false;
                     return;
                 }
 
                 if (!s.initialized) {
                     s.initialized = true;
-                    s.lastEst = est; s.lastCoord = coord;
+                    s.lastEst = est; s.lastCoord = coord; s.lastSup = sup;
                     runConfig(est, coord);
                     return;
                 }
 
                 // Coordinator changed to a special-case person
-                if (coord !== s.lastCoord && coord && coordinatorOverrideDatabase[coord]) {
-                    s.lastCoord = coord; s.lastEst = est;
+                if (coord !== s.lastCoord && coord && shouldApplyCoordinatorOverride(coord, est)) {
+                    s.lastCoord = coord; s.lastEst = est; s.lastSup = sup;
                     runConfig(est, coord);
                     return;
                 }
 
+                // Supervisor changed to a trigger (e.g. Direct Sales) with no Estimator
+                if (sup !== s.lastSup) {
+                    const triggered = getSupervisorTriggeredCoordinator(sup, est);
+                    if (triggered) {
+                        s.lastSup = sup; s.lastCoord = coord; s.lastEst = est;
+                        console.log('Supervisor', sup, 'triggered coordinator override for', triggered);
+                        runConfig(est, triggered);
+                        return;
+                    }
+                }
+
                 // Estimator changed
                 if (est !== s.lastEst && est) {
-                    s.lastEst = est; s.lastCoord = coord;
+                    s.lastEst = est; s.lastCoord = coord; s.lastSup = sup;
                     if (!estimatorDatabase[est]) {
                         console.warn('Estimator ID not in estimatorDatabase:', est);
                         return;
@@ -630,7 +709,7 @@
                     return;
                 }
 
-                s.lastEst = est; s.lastCoord = coord;
+                s.lastEst = est; s.lastCoord = coord; s.lastSup = sup;
             } catch (e) {
                 console.error('Modal watcher error:', e);
             }
@@ -690,38 +769,70 @@
             const coordinatorHiddenField = coordinatorDropdown.querySelector('input[type="hidden"][name*="_ClientState"]');
             if (!coordinatorInput || !coordinatorHiddenField) return;
 
+            // Check the current Coordinator + Estimator and fire the override if it applies
+            function checkCoordinator() {
+                if (Date.now() < overrideBusyUntil) return;
+                try {
+                    const cs = JSON.parse(coordinatorHiddenField.value);
+                    const est = getComboValue(document, 'Estimator') || '';
+                    if (cs && cs.value && shouldApplyCoordinatorOverride(cs.value, est)) {
+                        applyCoordinatorOverride(cs.value);
+                    }
+                } catch (e) {}
+            }
+
             const observer = new MutationObserver(mutations => {
                 mutations.forEach(m => {
                     if (m.type === 'attributes' && m.attributeName === 'value') {
-                        try {
-                            const cs = JSON.parse(coordinatorHiddenField.value);
-                            if (cs && cs.value && coordinatorOverrideDatabase[cs.value]) {
-                                setTimeout(() => applyCoordinatorOverride(cs.value), 200);
-                            }
-                        } catch (e) {}
+                        setTimeout(checkCoordinator, 200);
                     }
                 });
             });
             observer.observe(coordinatorHiddenField, { attributes: true, attributeFilter: ['value'] });
 
             coordinatorInput.addEventListener('change', () => {
-                setTimeout(() => {
-                    try {
-                        const cs = JSON.parse(coordinatorHiddenField.value);
-                        if (cs && cs.value && coordinatorOverrideDatabase[cs.value]) {
-                            applyCoordinatorOverride(cs.value);
-                        }
-                    } catch (e) {}
-                }, 200);
+                setTimeout(checkCoordinator, 200);
             });
 
             // Check the initial value in case Coordinator was already pre-set
-            try {
-                const cs = JSON.parse(coordinatorHiddenField.value);
-                if (cs && cs.value && coordinatorOverrideDatabase[cs.value]) {
-                    setTimeout(() => applyCoordinatorOverride(cs.value), 200);
-                }
-            } catch (e) {}
+            setTimeout(checkCoordinator, 200);
+        });
+    }
+
+    function setupSupervisorMonitor() {
+        waitForDropdownsReady(document, () => {
+            const supervisorDropdown = findParticipantDropdownByLabel(document, 'Supervisor');
+            if (!supervisorDropdown) return;
+
+            const supervisorInput = supervisorDropdown.querySelector('input.rcbInput');
+            const supervisorHiddenField = supervisorDropdown.querySelector('input[type="hidden"][name*="_ClientState"]');
+            if (!supervisorInput || !supervisorHiddenField) return;
+
+            function checkSupervisor() {
+                if (Date.now() < overrideBusyUntil) return;
+                try {
+                    const cs = JSON.parse(supervisorHiddenField.value);
+                    const est = getComboValue(document, 'Estimator') || '';
+                    const triggered = cs && cs.value && getSupervisorTriggeredCoordinator(cs.value, est);
+                    if (triggered) {
+                        console.log('Supervisor', cs.value, 'triggered coordinator override for', triggered);
+                        applyCoordinatorOverride(triggered);
+                    }
+                } catch (e) {}
+            }
+
+            const observer = new MutationObserver(mutations => {
+                mutations.forEach(m => {
+                    if (m.type === 'attributes' && m.attributeName === 'value') {
+                        setTimeout(checkSupervisor, 200);
+                    }
+                });
+            });
+            observer.observe(supervisorHiddenField, { attributes: true, attributeFilter: ['value'] });
+
+            supervisorInput.addEventListener('change', () => {
+                setTimeout(checkSupervisor, 200);
+            });
         });
     }
 
@@ -801,7 +912,7 @@
     // ==================== INIT ====================
 
     function initialize() {
-        console.log('SERVPRO Auto-Fill v9.0 initialized');
+        console.log('SERVPRO Auto-Fill v10.27 initialized');
 
         startJobPageModalWatcher();
 
@@ -810,6 +921,7 @@
             setTimeout(() => setupUserChangeTracking(), 1000);
             setTimeout(() => setupEstimatorMonitor(), 1500);
             setTimeout(() => setupCoordinatorMonitor(), 1500);
+            setTimeout(() => setupSupervisorMonitor(), 1500);
             setTimeout(() => setExternalParticipantDefaults(), 800);
 
             const currentOffice = document.querySelector('#ctl00_ContentPlaceHolder1_JobParentInformation_GenaralInfo_comboBoxOffice_Input');
